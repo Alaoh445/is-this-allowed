@@ -1,0 +1,148 @@
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+  padding: 1.5rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: transform 0.5s ease;
+}
+
+.header-brand:hover {
+  transform: translateY(-2px);
+}
+
+.header-logo {
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.header-title {
+  color: white;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header-title p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.85rem;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.header-nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-button {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.nav-button:active {
+  transform: translateY(0);
+}
+
+.home-btn {
+  display: none !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem 0;
+  }
+
+  .header-container {
+    padding: 0 1rem;
+    flex-wrap: wrap;
+  }
+
+  .header-logo {
+    width: 45px;
+    height: 45px;
+    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .header-title h1 {
+    font-size: 1.4rem;
+  }
+
+  .header-title p {
+    font-size: 0.75rem;
+  }
+
+  .header-brand {
+    gap: 0.75rem;
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title h1 {
+    font-size: 1.2rem;
+  }
+
+  .header-title p {
+    font-size: 0.7rem;
+  }
+
+  .header-logo {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .nav-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
