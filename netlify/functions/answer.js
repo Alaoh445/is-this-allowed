@@ -1,6 +1,11 @@
 const https = require('https');
 const http = require('http');
 
+// API Keys from environment
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+
 // Legal sources list (same as in server.js)
 const legalSources = [
   { title: "Legal Information Institute - Cornell Law", url: "https://www.law.cornell.edu/" },
@@ -44,33 +49,17 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // First try to call the backend server if available
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+    // Try to generate comprehensive answer using AI or backend
+    const answer = await generateComprehensiveAnswer(question, state);
     
-    try {
-      const answer = await callBackendServer(backendUrl, question, state);
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(answer),
-      };
-    } catch (backendError) {
-      console.error('Backend error:', backendError.message);
-      
-      // Fall back to local comprehensive answer generation (exactly like server.js)
-      const answer = getDetailedAnswer(question, state);
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(answer),
-      };
-    }
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(answer),
+    };
   } catch (error) {
     console.error('Function error:', error);
     return {
@@ -83,6 +72,248 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
+// Generate comprehensive answer using AI APIs or backend
+async function generateComprehensiveAnswer(question, state = 'Nigeria') {
+  try {
+    // Try Mistral API first (free, reliable)
+    if (MISTRAL_API_KEY) {
+      console.log('Using Mistral AI API');
+      return await getMistralAnswer(question, state);
+    }
+    // Then try Groq API if available
+    else if (GROQ_API_KEY) {
+      console.log('Using Groq API');
+      return await getGroqAnswer(question);
+    }
+    // Then try OpenAI if available
+    else if (OPENAI_API_KEY) {
+      console.log('Using OpenAI API');
+      return await getOpenAIAnswer(question);
+    }
+    // Try calling backend server if available
+    else {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      console.log(`Trying backend server at ${backendUrl}`);
+      return await callBackendServer(backendUrl, question, state);
+    }
+  } catch (error) {
+    console.error('Error generating comprehensive answer:', error.message);
+    // Fallback to template answers
+    return getDetailedAnswer(question, state);
+  }
+}
+
+// Mistral AI integration
+async function getMistralAnswer(question, state = 'Nigeria') {
+  try {
+    const stateInfo = state && state !== 'Nigeria' ? `\nThe user is asking from ${state} state in Nigeria.` : "\nThe user may be asking from any state in Nigeria.";
+    
+    const response = await fetchAPI('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a comprehensive legal information assistant. Provide detailed, accurate answers about legal matters, regulations, and general knowledge. Always provide answers in valid JSON format.
+
+RESPONSE FORMAT (MUST be valid JSON):
+{
+  "answer": "Brief answer: Yes/No/It Depends/Consult Professional",
+  "explanation": "2-3 paragraphs with comprehensive details and context",
+  "actions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5", "Action 6"],
+  "sources": [
+    {"title": "Full Resource Name", "url": "https://correct-url.com"},
+    {"title": "Another Resource", "url": "https://another-correct-url.com"}
+  ],
+  "media": {
+    "image_url": "URL or empty string",
+    "image_caption": "Caption if image exists",
+    "video_urls": [],
+    "map_data": {
+      "latitude": null,
+      "longitude": null,
+      "location_name": "",
+      "zoom_level": null
+    }
+  }
+}`
+          },
+          {
+            role: 'user',
+            content: `${question}${stateInfo}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Mistral API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.choices && data.choices[0]) {
+      let content = data.choices[0].message.content;
+      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      const parsed = JSON.parse(content);
+      if (!parsed.media) {
+        parsed.media = {
+          image_url: "",
+          image_caption: "",
+          video_urls: [],
+          map_data: { latitude: null, longitude: null, location_name: "", zoom_level: null }
+        };
+      }
+      
+      return {
+        question,
+        ...parsed
+      };
+    }
+  } catch (error) {
+    console.error('Mistral API error:', error.message);
+    throw error;
+  }
+}
+
+// Groq API integration
+async function getGroqAnswer(question) {
+  try {
+    const response = await fetchAPI('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gemma2-9b-it',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a legal information assistant. Provide comprehensive answers in JSON format.
+
+RESPONSE FORMAT (MUST be valid JSON):
+{
+  "answer": "Brief answer",
+  "explanation": "Detailed explanation",
+  "actions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5", "Action 6"],
+  "sources": [{"title": "Source", "url": "URL"}],
+  "media": {"image_url": "", "image_caption": "", "video_urls": [], "map_data": {"latitude": null, "longitude": null, "location_name": "", "zoom_level": null}}
+}`
+          },
+          {
+            role: 'user',
+            content: question
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices[0]) {
+      const parsed = JSON.parse(data.choices[0].message.content);
+      return { question, ...parsed };
+    }
+  } catch (error) {
+    console.error('Groq API error:', error.message);
+    throw error;
+  }
+}
+
+// OpenAI integration
+async function getOpenAIAnswer(question) {
+  try {
+    const response = await fetchAPI('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a legal information assistant. Provide comprehensive answers in JSON format with answer, explanation, actions array, sources array, and media object.`
+          },
+          {
+            role: 'user',
+            content: question
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices[0]) {
+      const parsed = JSON.parse(data.choices[0].message.content);
+      return { question, ...parsed };
+    }
+  } catch (error) {
+    console.error('OpenAI API error:', error.message);
+    throw error;
+  }
+}
+
+// Helper function for fetch
+function fetchAPI(url, options) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+    const urlObj = new URL(url);
+    
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: options.headers,
+      timeout: 15000
+    };
+
+    const req = protocol.request(requestOptions, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          json: () => Promise.resolve(JSON.parse(data))
+        });
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+
+    if (options.body) {
+      req.write(options.body);
+    }
+    req.end();
+  });
+}
 
 function callBackendServer(baseUrl, question, state) {
   return new Promise((resolve, reject) => {
@@ -138,11 +369,9 @@ function callBackendServer(baseUrl, question, state) {
 }
 
 // Fallback: Generate detailed answer based on question analysis
-// This is the EXACT SAME LOGIC as in server.js to ensure sync
 function getDetailedAnswer(question, state = 'Nigeria') {
   const lowerQuestion = question.toLowerCase();
   
-  // Analyze question keywords
   const keywords = {
     rent: lowerQuestion.includes('rent'),
     eviction: lowerQuestion.includes('eviction') || lowerQuestion.includes('evict'),
@@ -161,7 +390,6 @@ function getDetailedAnswer(question, state = 'Nigeria') {
   let relevantSources = [];
   let answer = 'It Depends';
 
-  // RENT related
   if (keywords.rent) {
     explanation = `Regarding rent matters: Rental laws vary significantly by jurisdiction. Generally, landlords must provide proper notice (typically 30-90 days) before any rent increases. Many states have rent control laws that limit the percentage of increase allowed. Rent must be reasonable and follow market standards. Your lease agreement governs the rental terms. Some protections include:\n
     
@@ -189,8 +417,6 @@ Always check your specific state and local laws, as they vary widely.`;
     ];
     answer = "It Depends";
   }
-
-  // EVICTION related
   else if (keywords.eviction) {
     explanation = `Regarding eviction: Landlords cannot evict tenants arbitrarily. They must have legal cause and follow proper legal procedures. You have rights including:\n
     
@@ -219,8 +445,6 @@ Illegal reasons for eviction include retaliation for reporting violations, exerc
     ];
     answer = "No";
   }
-
-  // SECURITY DEPOSIT related
   else if (keywords.deposit) {
     explanation = `Regarding security deposits: Most states have specific laws governing deposits. Generally:\n
     
@@ -249,8 +473,6 @@ Normal wear and tear is not deductible.`;
     ];
     answer = "State-Dependent";
   }
-
-  // DISCRIMINATION related
   else if (keywords.discrimination) {
     explanation = `Regarding housing discrimination: Federal Fair Housing Act prohibits discrimination based on:\n
     
@@ -280,8 +502,6 @@ Discrimination is illegal in all housing-related decisions including renting, fi
     ];
     answer = "No";
   }
-
-  // Default comprehensive answer
   else {
     const stateInfo = state && state !== "Nigeria" ? ` (in ${state} state)` : "";
     explanation = `Regarding your question about "${question}"${stateInfo}: Every legal situation is unique and depends on several factors including your location, specific circumstances, and applicable laws. Legal matters often have complex answers that depend on jurisdiction, contract terms, and individual facts.\n
