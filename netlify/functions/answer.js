@@ -1,6 +1,18 @@
 const https = require('https');
 const http = require('http');
 
+// Legal sources list (same as in server.js)
+const legalSources = [
+  { title: "Legal Information Institute - Cornell Law", url: "https://www.law.cornell.edu/" },
+  { title: "National Law Review", url: "https://www.natlawreview.com/" },
+  { title: "FindLaw", url: "https://www.findlaw.com/" },
+  { title: "LawHelp.org - Legal Aid", url: "https://www.lawhelp.org/" },
+  { title: "State Bar Association", url: "https://www.americanbar.org/" },
+  { title: "Nolo - Practical Legal Information", url: "https://www.nolo.com/" },
+  { title: "JUSTIA - Free Legal Information", url: "https://www.justia.com/" },
+  { title: "Avvo - Lawyer Directory", url: "https://www.avvo.com/" }
+];
+
 exports.handler = async (event, context) => {
   // Handle OPTIONS request for CORS
   if (event.httpMethod === 'OPTIONS') {
@@ -32,7 +44,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Try to call backend server if available
+    // First try to call the backend server if available
     const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
     
     try {
@@ -48,8 +60,8 @@ exports.handler = async (event, context) => {
     } catch (backendError) {
       console.error('Backend error:', backendError.message);
       
-      // Fall back to local answer generation using template-based answers
-      const answer = generateDetailedAnswer(question, state);
+      // Fall back to local comprehensive answer generation (exactly like server.js)
+      const answer = getDetailedAnswer(question, state);
       return {
         statusCode: 200,
         headers: {
@@ -125,8 +137,9 @@ function callBackendServer(baseUrl, question, state) {
   });
 }
 
-// Generate detailed answer based on question keywords (fallback template-based system)
-function generateDetailedAnswer(question, state = 'Nigeria') {
+// Fallback: Generate detailed answer based on question analysis
+// This is the EXACT SAME LOGIC as in server.js to ensure sync
+function getDetailedAnswer(question, state = 'Nigeria') {
   const lowerQuestion = question.toLowerCase();
   
   // Analyze question keywords
@@ -150,108 +163,147 @@ function generateDetailedAnswer(question, state = 'Nigeria') {
 
   // RENT related
   if (keywords.rent) {
-    explanation = `Regarding rent matters in Nigeria: Rental laws vary by state and local regulations. Generally, landlords must provide proper notice before any rent increases. Key points include:\n\n1. Right to peaceful enjoyment of the property\n2. Protection against arbitrary rent increases\n3. Requirement for proper written notice before changes (typically 30 days or more)\n4. Lease agreements must be honored\n5. Deposits must be held in trust\n6. Eviction procedures must be followed legally\n\nAlways check your specific state regulations and ensure any rental agreement is in writing.`;
+    explanation = `Regarding rent matters: Rental laws vary significantly by jurisdiction. Generally, landlords must provide proper notice (typically 30-90 days) before any rent increases. Many states have rent control laws that limit the percentage of increase allowed. Rent must be reasonable and follow market standards. Your lease agreement governs the rental terms. Some protections include:\n
+    
+1. Right to peaceful enjoyment of the property
+2. Protection against retaliatory rent increases
+3. Requirement for proper notice before changes
+4. Right to review and understand lease terms
+
+Always check your specific state and local laws, as they vary widely.`;
     
     actions = [
-      'Research your state\'s specific rent control and tenancy laws',
-      'Review your lease agreement carefully for rent increase terms',
-      'Keep all communications with your landlord in writing',
-      'Document all payments and receipts',
-      'Calculate proposed increases against legal limits in your state',
-      'Contact your state housing authority or tenant rights organization if needed'
+      "Research your state's rent control laws and regulations",
+      "Review your lease agreement for rent increase terms",
+      "Document all communications with your landlord in writing",
+      "Calculate proposed increases against legal limits",
+      "Join a tenant union or contact local housing authority",
+      "Consult with a tenant rights lawyer if needed"
     ];
     
     relevantSources = [
-      { title: 'Cornell Law - Landlord and Tenant Rights', url: 'https://www.law.cornell.edu/wex/landlord_and_tenant' },
-      { title: 'Nolo - Rent Control and Increase Laws', url: 'https://www.nolo.com/legal-encyclopedia/rent-increase-laws-state' },
-      { title: 'National Low Income Housing Coalition', url: 'https://nlihc.org/' },
-      { title: 'FindLaw - Tenant Rights', url: 'https://www.findlaw.com/consumer/housing/' }
+      { title: "Cornell Law - Landlord and Tenant Rights", url: "https://www.law.cornell.edu/wex/landlord_and_tenant" },
+      { title: "Nolo - Rent Control and Increases", url: "https://www.nolo.com/legal-encyclopedia/rent-increase-laws-state" },
+      { title: "National Low Income Housing Coalition", url: "https://nlihc.org/" },
+      { title: "Tenant Union Directory", url: "https://www.dsausa.org/housing/" }
     ];
-    answer = 'It Depends';
+    answer = "It Depends";
   }
+
   // EVICTION related
   else if (keywords.eviction) {
-    explanation = `Regarding eviction: Landlords cannot evict tenants without legal cause and proper procedures. You have important rights:\n\n- Right to written notice with specific timeframe (varies by state)\n- Right to appear in court and defend yourself\n- Right to legal representation\n- Protection against retaliatory eviction\n- Right to proper service of legal notice\n\nIllegal reasons for eviction include retaliation for reporting violations, exercising tenant rights, or discriminatory reasons.`;
+    explanation = `Regarding eviction: Landlords cannot evict tenants arbitrarily. They must have legal cause and follow proper legal procedures. You have rights including:\n
+    
+- Right to written notice (timing varies by state, typically 3-60 days)
+- Right to appear in court and defend yourself
+- Right to legal representation
+- Protection against retaliatory eviction
+- Right to proper service of notice
+
+Illegal reasons for eviction include retaliation for reporting violations, exercising tenant rights, or discriminatory reasons.`;
     
     actions = [
-      'Consult a tenant rights lawyer immediately if served with eviction notice',
-      'Respond to eviction notice within the required timeframe',
-      'File a counterclaim if eviction is retaliatory',
-      'Document all landlord harassment or property violations',
-      'Attend the court hearing and present your defense',
-      'Contact your local legal aid organization for free help'
+      "Consult a tenant rights lawyer immediately if served notice",
+      "Respond to eviction notice within required timeframe",
+      "File counterclaim if eviction is retaliatory",
+      "Document all landlord harassment or violations",
+      "Attend court hearing and present your defense",
+      "Contact legal aid organization in your area"
     ];
     
     relevantSources = [
-      { title: 'Cornell Law - Eviction', url: 'https://www.law.cornell.edu/wex/eviction' },
-      { title: 'Nolo - Eviction Defense Guide', url: 'https://www.nolo.com/legal-encyclopedia/eviction-notice-basics' },
-      { title: 'LawHelp - Free Legal Aid', url: 'https://www.lawhelp.org/' },
-      { title: 'Legal Services Corporation', url: 'https://www.lsc.gov/' }
+      { title: "Cornell Law - Eviction", url: "https://www.law.cornell.edu/wex/eviction" },
+      { title: "Nolo - Eviction Defense Guide", url: "https://www.nolo.com/legal-encyclopedia/eviction-notice-basics" },
+      { title: "LawHelp - Free Legal Aid", url: "https://www.lawhelp.org/" },
+      { title: "Legal Aid Organizations", url: "https://www.lawhelp.org/find-help" }
     ];
-    answer = 'No';
+    answer = "No";
   }
+
   // SECURITY DEPOSIT related
   else if (keywords.deposit) {
-    explanation = `Regarding security deposits: Most jurisdictions have specific laws governing deposits. Generally:\n\n- Deposits are typically limited to 1-2 months of rent\n- Deposits must be returned within 30-60 days after move-out\n- Landlords must provide itemized deductions for legitimate expenses\n- Normal wear and tear is not deductible\n- Some jurisdictions require interest payments on deposits\n- Illegal deductions must be returned with penalties\n\nDeposits are held in trust and cannot be used for landlord's operating expenses.`;
+    explanation = `Regarding security deposits: Most states have specific laws governing deposits. Generally:\n
+    
+- Deposits are limited to 1-2 months of rent
+- Deposits must be returned within 30-60 days after move-out
+- Landlords must provide itemized deductions
+- Some states require interest payments on deposits
+- Illegal deductions must be returned with interest
+- Deposits are held in trust and cannot be used for landlord's expenses
+
+Normal wear and tear is not deductible.`;
     
     actions = [
-      'Request a written receipt for deposit payment',
-      'Take photos and video of property condition before moving in',
-      'Document all property conditions in writing at move-in',
-      'Perform a thorough final walk-through with landlord',
-      'Request itemized list of deductions within legal timeframe',
-      'Sue in small claims court if deductions are unfair or illegal'
+      "Request written receipt for deposit payment",
+      "Take photos/video of property condition before moving in",
+      "Document property condition in writing",
+      "Perform final walk-through with landlord",
+      "Request itemized list of deductions within timeframe",
+      "Sue in small claims court if deductions are unfair"
     ];
     
     relevantSources = [
-      { title: 'Nolo - Security Deposit Laws by State', url: 'https://www.nolo.com/legal-encyclopedia/security-deposits' },
-      { title: 'FindLaw - Tenant Rights and Responsibilities', url: 'https://www.findlaw.com/consumer/housing/landlord-tenant-law.html' },
-      { title: 'Apartment Therapy - Tenant Rights Guide', url: 'https://www.apartmenttherapy.com/' }
+      { title: "Nolo - Security Deposit Laws", url: "https://www.nolo.com/legal-encyclopedia/security-deposits" },
+      { title: "FindLaw - Tenant Rights", url: "https://www.findlaw.com/consumer/housing/landlord-tenant-law.html" },
+      { title: "State-Specific Tenant Rights", url: "https://www.apartmenttherapy.com/tenant-rights-by-state-368896" }
     ];
-    answer = 'State-Dependent';
+    answer = "State-Dependent";
   }
+
   // DISCRIMINATION related
   else if (keywords.discrimination) {
-    explanation = `Regarding housing discrimination: Fair housing laws prohibit discrimination based on:\n\n- Race or color\n- National origin\n- Religion\n- Sex (including gender identity and sexual orientation)\n- Disability\n- Familial status (families with children)\n- Age in some jurisdictions\n\nDiscrimination is illegal in all housing decisions including renting, financing, insuring, and selling properties.`;
+    explanation = `Regarding housing discrimination: Federal Fair Housing Act prohibits discrimination based on:\n
+    
+- Race or color
+- National origin
+- Religion
+- Sex (including gender identity and sexual orientation)
+- Disability
+- Familial status (families with children)
+
+Discrimination is illegal in all housing-related decisions including renting, financing, insuring, and selling.`;
     
     actions = [
-      'Document all instances of discriminatory behavior with dates and details',
-      'File a complaint with the relevant fair housing agency',
-      'Keep records of all written communications',
-      'Gather witness statements from others who can corroborate',
-      'Consult with a fair housing attorney',
-      'Report to your state attorney general if applicable'
+      "Document all instances of discriminatory behavior",
+      "File a complaint with HUD within one year",
+      "Keep records of all communications",
+      "Gather witness statements",
+      "Consult with a fair housing attorney",
+      "Report to state attorney general if applicable"
     ];
     
     relevantSources = [
-      { title: 'HUD - Fair Housing Information', url: 'https://www.hud.gov/fairhousing' },
-      { title: 'Fair Housing Center Network', url: 'https://www.fhaction.org/' },
-      { title: 'Department of Justice - Fair Housing', url: 'https://www.justice.gov/crt/fair-housing' },
-      { title: 'NAACP Legal Defense Fund', url: 'https://www.naacpldf.org/' }
+      { title: "HUD - Fair Housing", url: "https://www.hud.gov/fairhousing" },
+      { title: "Fair Housing Center Network", url: "https://www.fhaction.org/" },
+      { title: "Department of Justice - Fair Housing", url: "https://www.justice.gov/crt/fair-housing" },
+      { title: "NAACP Legal Defense Fund", url: "https://www.naacpldf.org/" }
     ];
-    answer = 'No';
+    answer = "No";
   }
+
   // Default comprehensive answer
   else {
-    const stateInfo = state && state !== 'Nigeria' ? ` in ${state} state` : '';
-    explanation = `Regarding your question about "${question}"${stateInfo}:\n\nEvery legal and informational situation is unique and depends on several factors including your location, specific circumstances, and applicable laws and regulations.\n\nKey steps to get accurate information:\n1. Identify the relevant jurisdiction and applicable laws\n2. Review any contracts or written agreements\n3. Research state and local regulations\n4. Consult with a qualified professional in that field\n5. Document everything in writing\n6. Explore free resources and legal aid if needed`;
+    const stateInfo = state && state !== "Nigeria" ? ` (in ${state} state)` : "";
+    explanation = `Regarding your question about "${question}"${stateInfo}: Every legal situation is unique and depends on several factors including your location, specific circumstances, and applicable laws. Legal matters often have complex answers that depend on jurisdiction, contract terms, and individual facts.\n
+    
+Key steps to get accurate information:
+1. Identify your jurisdiction (state, city)
+2. Research applicable laws for your area
+3. Review any written agreements or contracts
+4. Consider consulting with a legal professional
+5. Explore legal aid if cost is a concern`;
 
     actions = [
-      'Identify the relevant jurisdiction for your specific question',
-      'Search for applicable laws and regulations for your location',
-      'Review any contracts, agreements, or relevant documents',
-      'Consult with a qualified professional or attorney',
-      'Contact legal aid or professional organizations for assistance',
-      'Document all relevant information and communications'
+      "Identify the relevant jurisdiction for your question",
+      `Search for state-specific laws and regulations${stateInfo}`,
+      "Review any contracts or written agreements",
+      "Consult with a qualified attorney in your area",
+      "Contact legal aid organizations for free/low-cost help",
+      "Document everything in writing"
     ];
 
-    relevantSources = [
-      { title: 'Legal Information Institute - Cornell Law', url: 'https://www.law.cornell.edu/' },
-      { title: 'National Law Review', url: 'https://www.natlawreview.com/' },
-      { title: 'FindLaw - Legal Information', url: 'https://www.findlaw.com/' },
-      { title: 'LawHelp.org - Legal Aid', url: 'https://www.lawhelp.org/' }
-    ];
-    answer = 'Consult Professional';
+    relevantSources = legalSources.slice(0, 5);
+    answer = "Consult Legal Professional";
   }
 
   return {
@@ -261,13 +313,13 @@ function generateDetailedAnswer(question, state = 'Nigeria') {
     actions,
     sources: relevantSources,
     media: {
-      image_url: '',
-      image_caption: '',
+      image_url: "",
+      image_caption: "",
       video_urls: [],
       map_data: {
         latitude: null,
         longitude: null,
-        location_name: '',
+        location_name: "",
         zoom_level: null
       }
     }
