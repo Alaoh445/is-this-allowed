@@ -19,8 +19,13 @@ function Answer() {
         window.scrollTo(0, 0);
         const decodedQuestion = decodeURIComponent(id);
         
-        // Use /api/answer which vite will proxy to localhost:5000
-        const response = await fetch("/api/answer", {
+        // Determine the API endpoint based on environment
+        // In development with Vite proxy, use /api/answer
+        // In production on Netlify, use /.netlify/functions/answer
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        const apiUrl = isProduction ? '/.netlify/functions/answer' : '/api/answer';
+        
+        const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -41,7 +46,7 @@ function Answer() {
         setError(null);
       } catch (err) {
         console.error("Error:", err);
-        setError(err.message || "Failed to fetch answer. Make sure the backend server is running on port 5000");
+        setError(err.message || "Failed to fetch answer. Please try again or contact support.");
         setAnswer(null);
       } finally {
         setLoading(false);
@@ -94,10 +99,11 @@ function Answer() {
           }}>
             <strong>⚠️ Connection Error:</strong> {error}
             <p style={{ marginTop: "10px", fontSize: "0.9rem" }}>
-              Please make sure:
+              If you're running locally, please make sure:
               <br />✓ Backend server is running (npm run server)
               <br />✓ Server is accessible on http://localhost:5000
-              <br />✓ Your network allows local connections
+              <br />
+              <br />If you're on the deployed site, we're experiencing a temporary issue. Please try again in a moment.
             </p>
           </div>
           <button 
