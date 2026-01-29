@@ -1,5 +1,6 @@
-// API Keys from environment - These MUST be set in Netlify dashboard Settings > Environment
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
+// API Keys from environment or hardcoded fallback
+// Try multiple sources: process.env (Netlify), netlify.toml, .env.production
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL || '';
@@ -7,9 +8,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL
 // Log environment status at startup (helps with debugging)
 console.log('[Startup] Netlify Serverless Function initialized');
 console.log(`[Startup] MISTRAL_API_KEY present: ${!!MISTRAL_API_KEY}`);
+console.log(`[Startup] MISTRAL_API_KEY value check: ${MISTRAL_API_KEY.substring(0, 10)}...`);
 console.log(`[Startup] GROQ_API_KEY present: ${!!GROQ_API_KEY}`);
 console.log(`[Startup] OPENAI_API_KEY present: ${!!OPENAI_API_KEY}`);
 console.log(`[Startup] BACKEND_URL: ${BACKEND_URL}`);
+console.log(`[Startup] Function ready to process requests`);
 
 // Legal sources list (same as in server.js)
 const legalSources = [

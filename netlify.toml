@@ -3,6 +3,10 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[build.environment]
+  MISTRAL_API_KEY = "V2RyZVaQfIZtScgZXizx8VtjUj34wDlB"
+  NODE_ENV = "production"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
