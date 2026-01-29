@@ -1,7 +1,15 @@
-// API Keys from environment
+// API Keys from environment - These MUST be set in Netlify dashboard Settings > Environment
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL || '';
+
+// Log environment status at startup (helps with debugging)
+console.log('[Startup] Netlify Serverless Function initialized');
+console.log(`[Startup] MISTRAL_API_KEY present: ${!!MISTRAL_API_KEY}`);
+console.log(`[Startup] GROQ_API_KEY present: ${!!GROQ_API_KEY}`);
+console.log(`[Startup] OPENAI_API_KEY present: ${!!OPENAI_API_KEY}`);
+console.log(`[Startup] BACKEND_URL: ${BACKEND_URL}`);
 
 // Legal sources list (same as in server.js)
 const legalSources = [
@@ -123,7 +131,11 @@ async function getMistralAnswer(question, state = 'Nigeria') {
   try {
     const stateInfo = state && state !== 'Nigeria' ? `\nThe user is asking from ${state} state in Nigeria.` : "\nThe user may be asking from any state in Nigeria.";
     
-    console.log('[getMistralAnswer] Sending request to Mistral API');
+    console.log('[getMistralAnswer] Starting Mistral API call with key:', MISTRAL_API_KEY.substring(0, 10) + '...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -135,27 +147,21 @@ async function getMistralAnswer(question, state = 'Nigeria') {
         messages: [
           {
             role: 'system',
-            content: `You are a comprehensive legal information assistant. Provide detailed, accurate answers about legal matters, regulations, and general knowledge. Always provide answers in valid JSON format.
+            content: `You are a comprehensive legal information assistant. Provide detailed, accurate answers about legal matters, regulations, and general knowledge. Always respond with ONLY valid JSON, no markdown formatting.
 
-RESPONSE FORMAT (MUST be valid JSON):
+Response must be valid JSON with this exact structure:
 {
   "answer": "Brief answer: Yes/No/It Depends/Consult Professional",
   "explanation": "2-3 paragraphs with comprehensive details and context",
   "actions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5", "Action 6"],
   "sources": [
-    {"title": "Full Resource Name", "url": "https://correct-url.com"},
-    {"title": "Another Resource", "url": "https://another-correct-url.com"}
+    {"title": "Full Resource Name", "url": "https://url.com"}
   ],
   "media": {
-    "image_url": "URL or empty string",
-    "image_caption": "Caption if image exists",
+    "image_url": "",
+    "image_caption": "",
     "video_urls": [],
-    "map_data": {
-      "latitude": null,
-      "longitude": null,
-      "location_name": "",
-      "zoom_level": null
-    }
+    "map_data": {"latitude": null, "longitude": null, "location_name": "", "zoom_level": null}
   }
 }`
           },
@@ -166,42 +172,61 @@ RESPONSE FORMAT (MUST be valid JSON):
         ],
         temperature: 0.7,
         max_tokens: 1500
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log(`[getMistralAnswer] Response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('[getMistralAnswer] Error response:', response.status, errorData);
-      throw new Error(`Mistral API error: ${response.status}`);
+      console.error('[getMistralAnswer] Error response:', response.status, errorData.substring(0, 200));
+      throw new Error(`Mistral API returned ${response.status}: ${errorData.substring(0, 100)}`);
     }
 
     const data = await response.json();
+    console.log('[getMistralAnswer] Got response from API');
     
-    if (data.choices && data.choices[0]) {
-      let content = data.choices[0].message.content;
-      console.log('[getMistralAnswer] Received content, parsing JSON');
-      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      const parsed = JSON.parse(content);
-      if (!parsed.media) {
-        parsed.media = {
-          image_url: "",
-          image_caption: "",
-          video_urls: [],
-          map_data: { latitude: null, longitude: null, location_name: "", zoom_level: null }
-        };
-      }
-      
-      console.log('[getMistralAnswer] Successfully parsed and returning answer');
-      return {
-        question,
-        ...parsed
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('[getMistralAnswer] Invalid response structure:', JSON.stringify(data).substring(0, 200));
+      throw new Error('Invalid response structure from Mistral API');
+    }
+    
+    let content = data.choices[0].message.content;
+    console.log('[getMistralAnswer] Raw content received:', content.substring(0, 100) + '...');
+    
+    // Clean up markdown formatting if present
+    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    
+    // Try to extract JSON if it's wrapped in markdown or text
+    let jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      content = jsonMatch[0];
+    }
+    
+    console.log('[getMistralAnswer] Cleaned content:', content.substring(0, 100) + '...');
+    
+    const parsed = JSON.parse(content);
+    console.log('[getMistralAnswer] Successfully parsed JSON');
+    
+    // Ensure all required fields exist
+    if (!parsed.media) {
+      parsed.media = {
+        image_url: "",
+        image_caption: "",
+        video_urls: [],
+        map_data: { latitude: null, longitude: null, location_name: "", zoom_level: null }
       };
     }
-    throw new Error('No valid response from Mistral API');
+    
+    console.log('[getMistralAnswer] Returning parsed answer');
+    return {
+      question,
+      ...parsed
+    };
   } catch (error) {
-    console.error('[getMistralAnswer] Error:', error.message);
+    console.error('[getMistralAnswer] Error:', error.message, error.stack?.substring(0, 200));
     throw error;
   }
 }
@@ -209,7 +234,11 @@ RESPONSE FORMAT (MUST be valid JSON):
 // Groq API integration using native fetch
 async function getGroqAnswer(question) {
   try {
-    console.log('[getGroqAnswer] Sending request to Groq API');
+    console.log('[getGroqAnswer] Starting Groq API call');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -221,9 +250,8 @@ async function getGroqAnswer(question) {
         messages: [
           {
             role: 'system',
-            content: `You are a legal information assistant. Provide comprehensive answers in JSON format.
+            content: `You are a legal information assistant. Respond with ONLY valid JSON.
 
-RESPONSE FORMAT (MUST be valid JSON):
 {
   "answer": "Brief answer",
   "explanation": "Detailed explanation with comprehensive information",
@@ -239,19 +267,24 @@ RESPONSE FORMAT (MUST be valid JSON):
         ],
         temperature: 0.7,
         max_tokens: 1500
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log(`[getGroqAnswer] Response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('[getGroqAnswer] Error response:', response.status, errorData);
-      throw new Error(`Groq API error: ${response.status}`);
+      console.error('[getGroqAnswer] Error:', response.status, errorData.substring(0, 200));
+      throw new Error(`Groq API returned ${response.status}`);
     }
 
     const data = await response.json();
     if (data.choices && data.choices[0]) {
-      const parsed = JSON.parse(data.choices[0].message.content);
+      let content = data.choices[0].message.content;
+      content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(content);
       console.log('[getGroqAnswer] Successfully parsed and returning answer');
       return { question, ...parsed };
     }
@@ -265,7 +298,11 @@ RESPONSE FORMAT (MUST be valid JSON):
 // OpenAI integration using native fetch
 async function getOpenAIAnswer(question) {
   try {
-    console.log('[getOpenAIAnswer] Sending request to OpenAI API');
+    console.log('[getOpenAIAnswer] Starting OpenAI API call');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -277,7 +314,15 @@ async function getOpenAIAnswer(question) {
         messages: [
           {
             role: 'system',
-            content: `You are a legal information assistant. Provide comprehensive answers in JSON format with answer, explanation, actions array, sources array, and media object.`
+            content: `You are a legal information assistant. Respond with ONLY valid JSON.
+
+{
+  "answer": "Brief answer",
+  "explanation": "Detailed explanation with comprehensive information",
+  "actions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5", "Action 6"],
+  "sources": [{"title": "Source Name", "url": "https://url.com"}],
+  "media": {"image_url": "", "image_caption": "", "video_urls": [], "map_data": {"latitude": null, "longitude": null, "location_name": "", "zoom_level": null}}
+}`
           },
           {
             role: 'user',
@@ -286,19 +331,24 @@ async function getOpenAIAnswer(question) {
         ],
         temperature: 0.7,
         max_tokens: 1500
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log(`[getOpenAIAnswer] Response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('[getOpenAIAnswer] Error response:', response.status, errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('[getOpenAIAnswer] Error:', response.status, errorData.substring(0, 200));
+      throw new Error(`OpenAI API returned ${response.status}`);
     }
 
     const data = await response.json();
     if (data.choices && data.choices[0]) {
-      const parsed = JSON.parse(data.choices[0].message.content);
+      let content = data.choices[0].message.content;
+      content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(content);
       console.log('[getOpenAIAnswer] Successfully parsed and returning answer');
       return { question, ...parsed };
     }
@@ -312,16 +362,23 @@ async function getOpenAIAnswer(question) {
 // Call backend server
 async function callBackendServer(baseUrl, question, state) {
   try {
-    console.log('[callBackendServer] Sending request to backend');
+    console.log('[callBackendServer] Attempting to reach backend at:', baseUrl);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
     const response = await fetch(`${baseUrl}/api/answer`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ question, state })
+      body: JSON.stringify({ question, state }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log(`[callBackendServer] Response status: ${response.status}`);
+    
     if (!response.ok) {
       throw new Error(`Backend returned status ${response.status}`);
     }
