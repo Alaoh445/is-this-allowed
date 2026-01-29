@@ -1,6 +1,3 @@
-const https = require('https');
-const http = require('http');
-
 // API Keys from environment
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
@@ -38,6 +35,9 @@ exports.handler = async (event, context) => {
     const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body || {};
     const { question, state = 'Nigeria' } = body;
 
+    console.log(`[Handler] Processing question: "${question}" for state: "${state}"`);
+    console.log(`[Handler] Available API Keys: Mistral=${!!MISTRAL_API_KEY}, Groq=${!!GROQ_API_KEY}, OpenAI=${!!OPENAI_API_KEY}`);
+
     if (!question) {
       return {
         statusCode: 400,
@@ -61,7 +61,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify(answer),
     };
   } catch (error) {
-    console.error('Function error:', error);
+    console.error('[Handler] Function error:', error);
     return {
       statusCode: 500,
       headers: {
@@ -78,38 +78,53 @@ async function generateComprehensiveAnswer(question, state = 'Nigeria') {
   try {
     // Try Mistral API first (free, reliable)
     if (MISTRAL_API_KEY) {
-      console.log('Using Mistral AI API');
-      return await getMistralAnswer(question, state);
+      console.log('[generateComprehensiveAnswer] Attempting to use Mistral AI API');
+      const answer = await getMistralAnswer(question, state);
+      console.log('[generateComprehensiveAnswer] Successfully got answer from Mistral');
+      return answer;
     }
     // Then try Groq API if available
     else if (GROQ_API_KEY) {
-      console.log('Using Groq API');
-      return await getGroqAnswer(question);
+      console.log('[generateComprehensiveAnswer] Attempting to use Groq API');
+      const answer = await getGroqAnswer(question);
+      console.log('[generateComprehensiveAnswer] Successfully got answer from Groq');
+      return answer;
     }
     // Then try OpenAI if available
     else if (OPENAI_API_KEY) {
-      console.log('Using OpenAI API');
-      return await getOpenAIAnswer(question);
+      console.log('[generateComprehensiveAnswer] Attempting to use OpenAI API');
+      const answer = await getOpenAIAnswer(question);
+      console.log('[generateComprehensiveAnswer] Successfully got answer from OpenAI');
+      return answer;
     }
     // Try calling backend server if available
     else {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-      console.log(`Trying backend server at ${backendUrl}`);
-      return await callBackendServer(backendUrl, question, state);
+      console.log(`[generateComprehensiveAnswer] Attempting to call backend server at ${backendUrl}`);
+      try {
+        const answer = await callBackendServer(backendUrl, question, state);
+        console.log('[generateComprehensiveAnswer] Successfully got answer from backend server');
+        return answer;
+      } catch (backendError) {
+        console.error('[generateComprehensiveAnswer] Backend server error:', backendError.message);
+        throw backendError;
+      }
     }
   } catch (error) {
-    console.error('Error generating comprehensive answer:', error.message);
+    console.error('[generateComprehensiveAnswer] Error:', error.message);
+    console.log('[generateComprehensiveAnswer] Falling back to template answers');
     // Fallback to template answers
     return getDetailedAnswer(question, state);
   }
 }
 
-// Mistral AI integration
+// Mistral AI integration using native fetch
 async function getMistralAnswer(question, state = 'Nigeria') {
   try {
     const stateInfo = state && state !== 'Nigeria' ? `\nThe user is asking from ${state} state in Nigeria.` : "\nThe user may be asking from any state in Nigeria.";
     
-    const response = await fetchAPI('https://api.mistral.ai/v1/chat/completions', {
+    console.log('[getMistralAnswer] Sending request to Mistral API');
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -154,7 +169,10 @@ RESPONSE FORMAT (MUST be valid JSON):
       })
     });
 
+    console.log(`[getMistralAnswer] Response status: ${response.status}`);
     if (!response.ok) {
+      const errorData = await response.text();
+      console.error('[getMistralAnswer] Error response:', response.status, errorData);
       throw new Error(`Mistral API error: ${response.status}`);
     }
 
@@ -162,6 +180,7 @@ RESPONSE FORMAT (MUST be valid JSON):
     
     if (data.choices && data.choices[0]) {
       let content = data.choices[0].message.content;
+      console.log('[getMistralAnswer] Received content, parsing JSON');
       content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
       const parsed = JSON.parse(content);
@@ -174,21 +193,24 @@ RESPONSE FORMAT (MUST be valid JSON):
         };
       }
       
+      console.log('[getMistralAnswer] Successfully parsed and returning answer');
       return {
         question,
         ...parsed
       };
     }
+    throw new Error('No valid response from Mistral API');
   } catch (error) {
-    console.error('Mistral API error:', error.message);
+    console.error('[getMistralAnswer] Error:', error.message);
     throw error;
   }
 }
 
-// Groq API integration
+// Groq API integration using native fetch
 async function getGroqAnswer(question) {
   try {
-    const response = await fetchAPI('https://api.groq.com/openai/v1/chat/completions', {
+    console.log('[getGroqAnswer] Sending request to Groq API');
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -204,9 +226,9 @@ async function getGroqAnswer(question) {
 RESPONSE FORMAT (MUST be valid JSON):
 {
   "answer": "Brief answer",
-  "explanation": "Detailed explanation",
+  "explanation": "Detailed explanation with comprehensive information",
   "actions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5", "Action 6"],
-  "sources": [{"title": "Source", "url": "URL"}],
+  "sources": [{"title": "Source Name", "url": "https://url.com"}],
   "media": {"image_url": "", "image_caption": "", "video_urls": [], "map_data": {"latitude": null, "longitude": null, "location_name": "", "zoom_level": null}}
 }`
           },
@@ -220,25 +242,31 @@ RESPONSE FORMAT (MUST be valid JSON):
       })
     });
 
+    console.log(`[getGroqAnswer] Response status: ${response.status}`);
     if (!response.ok) {
+      const errorData = await response.text();
+      console.error('[getGroqAnswer] Error response:', response.status, errorData);
       throw new Error(`Groq API error: ${response.status}`);
     }
 
     const data = await response.json();
     if (data.choices && data.choices[0]) {
       const parsed = JSON.parse(data.choices[0].message.content);
+      console.log('[getGroqAnswer] Successfully parsed and returning answer');
       return { question, ...parsed };
     }
+    throw new Error('No valid response from Groq API');
   } catch (error) {
-    console.error('Groq API error:', error.message);
+    console.error('[getGroqAnswer] Error:', error.message);
     throw error;
   }
 }
 
-// OpenAI integration
+// OpenAI integration using native fetch
 async function getOpenAIAnswer(question) {
   try {
-    const response = await fetchAPI('https://api.openai.com/v1/chat/completions', {
+    console.log('[getOpenAIAnswer] Sending request to OpenAI API');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -261,111 +289,50 @@ async function getOpenAIAnswer(question) {
       })
     });
 
+    console.log(`[getOpenAIAnswer] Response status: ${response.status}`);
     if (!response.ok) {
+      const errorData = await response.text();
+      console.error('[getOpenAIAnswer] Error response:', response.status, errorData);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
     if (data.choices && data.choices[0]) {
       const parsed = JSON.parse(data.choices[0].message.content);
+      console.log('[getOpenAIAnswer] Successfully parsed and returning answer');
       return { question, ...parsed };
     }
+    throw new Error('No valid response from OpenAI API');
   } catch (error) {
-    console.error('OpenAI API error:', error.message);
+    console.error('[getOpenAIAnswer] Error:', error.message);
     throw error;
   }
 }
 
-// Helper function for fetch
-function fetchAPI(url, options) {
-  return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https') ? https : http;
-    const urlObj = new URL(url);
-    
-    const requestOptions = {
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
-      method: options.method || 'GET',
-      headers: options.headers,
-      timeout: 15000
-    };
-
-    const req = protocol.request(requestOptions, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        resolve({
-          ok: res.statusCode >= 200 && res.statusCode < 300,
-          status: res.statusCode,
-          json: () => Promise.resolve(JSON.parse(data))
-        });
-      });
-    });
-
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-
-    if (options.body) {
-      req.write(options.body);
-    }
-    req.end();
-  });
-}
-
-function callBackendServer(baseUrl, question, state) {
-  return new Promise((resolve, reject) => {
-    const protocol = baseUrl.startsWith('https') ? https : http;
-    const url = new URL('/api/answer', baseUrl);
-    
-    const data = JSON.stringify({ question, state });
-    
-    const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
+// Call backend server
+async function callBackendServer(baseUrl, question, state) {
+  try {
+    console.log('[callBackendServer] Sending request to backend');
+    const response = await fetch(`${baseUrl}/api/answer`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': data.length,
       },
-      timeout: 5000,
-    };
-
-    const req = protocol.request(options, (res) => {
-      let responseData = '';
-
-      res.on('data', (chunk) => {
-        responseData += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          try {
-            resolve(JSON.parse(responseData));
-          } catch (e) {
-            reject(new Error('Invalid JSON response from backend'));
-          }
-        } else {
-          reject(new Error(`Backend returned status ${res.statusCode}`));
-        }
-      });
+      body: JSON.stringify({ question, state })
     });
 
-    req.on('error', (error) => {
-      reject(error);
-    });
+    console.log(`[callBackendServer] Response status: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Backend returned status ${response.status}`);
+    }
 
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Backend server timeout'));
-    });
-
-    req.write(data);
-    req.end();
-  });
+    const data = await response.json();
+    console.log('[callBackendServer] Successfully retrieved answer from backend');
+    return data;
+  } catch (error) {
+    console.error('[callBackendServer] Error:', error.message);
+    throw error;
+  }
 }
 
 // Fallback: Generate detailed answer based on question analysis
