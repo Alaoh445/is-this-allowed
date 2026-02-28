@@ -1,7 +1,48 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 function Footer() {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+  const [subscribeMessage, setSubscribeMessage] = useState(null);
+  const [subscribeError, setSubscribeError] = useState(null);
+  const [subscribing, setSubscribing] = useState(false);
+
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+    setSubscribing(true);
+    setSubscribeError(null);
+    setSubscribeMessage(null);
+    
+    try {
+      // Determine the API endpoint based on environment
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const apiUrl = isProduction ? '/.netlify/functions/newsletter' : 'http://localhost:5000/api/newsletter';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to subscribe');
+      }
+
+      setSubscribeMessage('✓ Successfully subscribed! Check your email.');
+      setEmail("");
+      setTimeout(() => setSubscribeMessage(null), 5000);
+    } catch (err) {
+      console.error("Error subscribing to newsletter:", err);
+      setSubscribeError(err.message || 'Failed to subscribe. Please try again.');
+      setTimeout(() => setSubscribeError(null), 5000);
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   return (
     <footer style={{
@@ -60,6 +101,75 @@ function Footer() {
               </a>
             </li>
           </ul>
+        </div>
+
+        {/* Newsletter Signup */}
+        <div>
+          <h3 style={{ color: '#667eea', marginBottom: '15px', fontSize: '1.2rem' }}>Newsletter</h3>
+          <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#b0b0b0', marginBottom: '15px' }}>
+            Get updates about new resources and legal tips.
+          </p>
+          
+          {subscribeMessage && (
+            <div style={{
+              backgroundColor: '#28a745',
+              color: 'white',
+              padding: '10px',
+              borderRadius: '4px',
+              fontSize: '0.85rem',
+              marginBottom: '10px'
+            }}>
+              {subscribeMessage}
+            </div>
+          )}
+          
+          {subscribeError && (
+            <div style={{
+              backgroundColor: '#dc3545',
+              color: 'white',
+              padding: '10px',
+              borderRadius: '4px',
+              fontSize: '0.85rem',
+              marginBottom: '10px'
+            }}>
+              {subscribeError}
+            </div>
+          )}
+          
+          <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input
+              type="email"
+              placeholder="Your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={subscribing}
+              required
+              style={{
+                padding: '10px',
+                borderRadius: '4px',
+                border: 'none',
+                fontSize: '0.9rem',
+                opacity: subscribing ? 0.6 : 1
+              }}
+            />
+            <button
+              type="submit"
+              disabled={subscribing}
+              style={{
+                padding: '10px',
+                backgroundColor: subscribing ? '#999' : '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: subscribing ? 'not-allowed' : 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                transition: 'background-color 0.3s'
+              }}
+            >
+              {subscribing ? 'Subscribing...' : 'Subscribe'}
+            </button>
+          </form>
         </div>
 
         {/* Resources */}

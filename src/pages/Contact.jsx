@@ -11,6 +11,8 @@ function Contact() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -18,15 +20,44 @@ function Contact() {
       ...prev,
       [name]: value
     }));
+    setError(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the form data to a backend
-    console.log("Form submitted:", formData);
-    setSubmitted(true);
-    setFormData({ name: "", email: "", subject: "", message: "" });
-    setTimeout(() => setSubmitted(false), 5000);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Determine the API endpoint based on environment
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const apiUrl = isProduction ? '/.netlify/functions/contact' : 'http://localhost:5000/api/contact';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+      }
+
+      const data = await response.json();
+      console.log("Contact form submitted successfully:", data);
+      
+      setSubmitted(true);
+      setFormData({ name: "", email: "", subject: "", message: "" });
+      setTimeout(() => setSubmitted(false), 5000);
+    } catch (err) {
+      console.error("Error submitting contact form:", err);
+      setError(err.message || 'Failed to send message. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,6 +82,19 @@ function Contact() {
           </div>
         )}
 
+        {error && (
+          <div style={{
+            backgroundColor: "#f8d7da",
+            border: "1px solid #f5c6cb",
+            color: "#721c24",
+            padding: "15px",
+            borderRadius: "8px",
+            marginBottom: "20px"
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "20px" }}>
             <label style={{ display: "block", marginBottom: "8px", fontWeight: "600" }}>
@@ -62,13 +106,15 @@ function Contact() {
               value={formData.name}
               onChange={handleChange}
               required
+              disabled={loading}
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: "8px",
                 border: "2px solid #667eea",
                 fontSize: "1rem",
-                fontFamily: "inherit"
+                fontFamily: "inherit",
+                opacity: loading ? 0.6 : 1
               }}
               placeholder="Enter your name"
             />
@@ -84,13 +130,15 @@ function Contact() {
               value={formData.email}
               onChange={handleChange}
               required
+              disabled={loading}
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: "8px",
                 border: "2px solid #667eea",
                 fontSize: "1rem",
-                fontFamily: "inherit"
+                fontFamily: "inherit",
+                opacity: loading ? 0.6 : 1
               }}
               placeholder="Enter your email"
             />
@@ -106,13 +154,15 @@ function Contact() {
               value={formData.subject}
               onChange={handleChange}
               required
+              disabled={loading}
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: "8px",
                 border: "2px solid #667eea",
                 fontSize: "1rem",
-                fontFamily: "inherit"
+                fontFamily: "inherit",
+                opacity: loading ? 0.6 : 1
               }}
               placeholder="What is this about?"
             />
@@ -127,6 +177,7 @@ function Contact() {
               value={formData.message}
               onChange={handleChange}
               required
+              disabled={loading}
               rows="6"
               style={{
                 width: "100%",
@@ -135,7 +186,8 @@ function Contact() {
                 border: "2px solid #667eea",
                 fontSize: "1rem",
                 fontFamily: "inherit",
-                resize: "vertical"
+                resize: "vertical",
+                opacity: loading ? 0.6 : 1
               }}
               placeholder="Tell us more about your inquiry..."
             />
@@ -143,9 +195,10 @@ function Contact() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               padding: "12px 30px",
-              backgroundColor: "#667eea",
+              backgroundColor: loading ? "#999" : "#667eea",
               color: "white",
               border: "none",
               borderRadius: "8px",

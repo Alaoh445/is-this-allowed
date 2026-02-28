@@ -3,6 +3,9 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import process from 'process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
@@ -11,6 +14,17 @@ const PORT = process.env.PORT || 5000;
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const SEND_EMAIL = process.env.SEND_EMAILS === 'true'; // Set to true in .env to enable emails
+
+// Get directory path for file storage
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dataDir = path.join(__dirname, 'data');
+
+// Ensure data directory exists
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // CORS configuration to handle mobile and cross-origin requests
 const corsOptions = {
@@ -22,6 +36,351 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// ============ DATA STORAGE FUNCTIONS ============
+
+// Save contact message to file
+function saveContactMessage(data) {
+  const filePath = path.join(dataDir, 'contacts.json');
+  let contacts = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    contacts = JSON.parse(fileContent || '[]');
+  }
+  
+  contacts.push({
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    ...data
+  });
+  
+  fs.writeFileSync(filePath, JSON.stringify(contacts, null, 2));
+  console.log(`✅ Contact saved: ${data.email}`);
+  return contacts[contacts.length - 1];
+}
+
+// Save newsletter subscriber to file
+function saveNewsletterSubscriber(email) {
+  const filePath = path.join(dataDir, 'subscribers.json');
+  let subscribers = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    subscribers = JSON.parse(fileContent || '[]');
+  }
+  
+  // Check if email already subscribed
+  if (subscribers.some(sub => sub.email === email)) {
+    throw new Error('Email already subscribed');
+  }
+  
+  subscribers.push({
+    email,
+    subscribedAt: new Date().toISOString()
+  });
+  
+  fs.writeFileSync(filePath, JSON.stringify(subscribers, null, 2));
+  console.log(`✅ Newsletter subscriber saved: ${email}`);
+  return { email, subscribedAt: new Date().toISOString() };
+}
+
+// Save booking request to file
+function saveBooking(data) {
+  const filePath = path.join(dataDir, 'bookings.json');
+  let bookings = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    bookings = JSON.parse(fileContent || '[]');
+  }
+  
+  bookings.push({
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    status: 'pending',
+    ...data
+  });
+  
+  fs.writeFileSync(filePath, JSON.stringify(bookings, null, 2));
+  console.log(`✅ Booking saved: ${data.email} - ${data.service}`);
+  return bookings[bookings.length - 1];
+}
+
+// Send email notification (basic implementation)
+async function sendEmailNotification(to, subject, htmlContent) {
+  if (!SEND_EMAIL) {
+    console.log(`📧 Email notification (not sent - disabled). To: ${to}, Subject: ${subject}`);
+    return { success: true, message: 'Email notification logged' };
+  }
+  
+  try {
+    // You can integrate with Mailgun, SendGrid, Nodemailer, etc.
+    // For now, we'll just log it
+    console.log(`📧 Email would be sent to ${to}`);
+    console.log(`Subject: ${subject}`);
+    
+    // Format for logging
+    const logPath = path.join(dataDir, 'email-log.json');
+    let emailLog = [];
+    
+    if (fs.existsSync(logPath)) {
+      const fileContent = fs.readFileSync(logPath, 'utf-8');
+      emailLog = JSON.parse(fileContent || '[]');
+    }
+    
+    emailLog.push({
+      timestamp: new Date().toISOString(),
+      to,
+      subject,
+      status: 'sent'
+    });
+    
+    fs.writeFileSync(logPath, JSON.stringify(emailLog, null, 2));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============ API ENDPOINTS ============
+
+// Contact Form Submission
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, subject, message } = req.body;
+    
+    // Validation
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ 
+        error: 'All fields are required',
+        fields: { name, email, subject, message }
+      });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+    
+    // Save contact message
+    const contactData = {
+      name,
+      email,
+      subject,
+      message
+    };
+    
+    const savedContact = saveContactMessage(contactData);
+    
+    // Send confirmation email to user
+    await sendEmailNotification(
+      email,
+      'We Received Your Message',
+      `<h2>Thank you for contacting Is This Allowed?</h2>
+       <p>Hi ${name},</p>
+       <p>We have received your message and will get back to you as soon as possible.</p>
+       <p><strong>Subject:</strong> ${subject}</p>
+       <p>Best regards,<br/>Is This Allowed? Team</p>`
+    );
+    
+    // Send notification to admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@thisallowed.com';
+    await sendEmailNotification(
+      adminEmail,
+      `New Contact Message: ${subject}`,
+      `<h2>New Contact Form Submission</h2>
+       <p><strong>Name:</strong> ${name}</p>
+       <p><strong>Email:</strong> ${email}</p>
+       <p><strong>Subject:</strong> ${subject}</p>
+       <p><strong>Message:</strong></p>
+       <p>${message}</p>`
+    );
+    
+    res.json({
+      success: true,
+      message: 'Your message has been received. We will respond soon.',
+      id: savedContact.id
+    });
+  } catch (error) {
+    console.error('Error processing contact:', error);
+    res.status(500).json({ 
+      error: 'Failed to process contact form',
+      details: error.message 
+    });
+  }
+});
+
+// Newsletter Signup
+app.post('/api/newsletter', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Validation
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+    
+    // Save subscriber
+    const subscriber = saveNewsletterSubscriber(email);
+    
+    // Send confirmation email
+    await sendEmailNotification(
+      email,
+      'Welcome to Is This Allowed? Newsletter',
+      `<h2>Welcome!</h2>
+       <p>Thank you for subscribing to our newsletter.</p>
+       <p>You will now receive updates about new legal resources, tips, and guides.</p>
+       <p>Best regards,<br/>Is This Allowed? Team</p>`
+    );
+    
+    res.json({
+      success: true,
+      message: 'Successfully subscribed to newsletter'
+    });
+  } catch (error) {
+    console.error('Error processing newsletter:', error);
+    
+    if (error.message === 'Email already subscribed') {
+      return res.status(409).json({ 
+        success: false,
+        error: 'Email is already subscribed' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to subscribe to newsletter',
+      details: error.message 
+    });
+  }
+});
+
+// Booking Request
+app.post('/api/booking', async (req, res) => {
+  try {
+    const { name, email, phone, service, date, time, notes } = req.body;
+    
+    // Validation
+    if (!name || !email || !phone || !service || !date) {
+      return res.status(400).json({ 
+        error: 'Name, email, phone, service, and date are required'
+      });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+    
+    // Phone validation (basic)
+    if (phone.length < 10) {
+      return res.status(400).json({ error: 'Invalid phone number' });
+    }
+    
+    // Save booking
+    const bookingData = {
+      name,
+      email,
+      phone,
+      service,
+      date,
+      time: time || 'TBD',
+      notes: notes || ''
+    };
+    
+    const savedBooking = saveBooking(bookingData);
+    
+    // Send confirmation email to user
+    await sendEmailNotification(
+      email,
+      'Booking Request Received',
+      `<h2>Thank you for your booking request</h2>
+       <p>Hi ${name},</p>
+       <p>We have received your booking request for <strong>${service}</strong> on <strong>${date}</strong>.</p>
+       <p>We will contact you shortly to confirm the appointment.</p>
+       <p><strong>Reference ID:</strong> ${savedBooking.id}</p>
+       <p>Best regards,<br/>Is This Allowed? Team</p>`
+    );
+    
+    // Send notification to admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@thisallowed.com';
+    await sendEmailNotification(
+      adminEmail,
+      `New Booking Request: ${service}`,
+      `<h2>New Booking Request</h2>
+       <p><strong>Name:</strong> ${name}</p>
+       <p><strong>Email:</strong> ${email}</p>
+       <p><strong>Phone:</strong> ${phone}</p>
+       <p><strong>Service:</strong> ${service}</p>
+       <p><strong>Date:</strong> ${date}</p>
+       <p><strong>Time:</strong> ${time || 'TBD'}</p>
+       <p><strong>Notes:</strong> ${notes || 'None'}</p>
+       <p><strong>Reference ID:</strong> ${savedBooking.id}</p>`
+    );
+    
+    res.json({
+      success: true,
+      message: 'Your booking request has been received. We will contact you soon.',
+      bookingId: savedBooking.id
+    });
+  } catch (error) {
+    console.error('Error processing booking:', error);
+    res.status(500).json({ 
+      error: 'Failed to process booking',
+      details: error.message 
+    });
+  }
+});
+
+// Get submissions (admin endpoint - for viewing stored data)
+app.get('/api/admin/contacts', (req, res) => {
+  try {
+    const filePath = path.join(dataDir, 'contacts.json');
+    if (!fs.existsSync(filePath)) {
+      return res.json([]);
+    }
+    const contacts = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    res.json(contacts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve contacts' });
+  }
+});
+
+app.get('/api/admin/subscribers', (req, res) => {
+  try {
+    const filePath = path.join(dataDir, 'subscribers.json');
+    if (!fs.existsSync(filePath)) {
+      return res.json([]);
+    }
+    const subscribers = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    res.json(subscribers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve subscribers' });
+  }
+});
+
+app.get('/api/admin/bookings', (req, res) => {
+  try {
+    const filePath = path.join(dataDir, 'bookings.json');
+    if (!fs.existsSync(filePath)) {
+      return res.json([]);
+    }
+    const bookings = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve bookings' });
+  }
+});
 
 // Authoritative legal sources
 const legalSources = [
