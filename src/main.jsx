@@ -1,10 +1,17 @@
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home.jsx'
 import Answer from './pages/Answer.jsx'
 import Contact from './pages/Contact.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
+import Login from './pages/Login.jsx'
+import Register from './pages/Register.jsx'
+import Services from './pages/Services.jsx'
+import ServiceDetail from './pages/ServiceDetail.jsx'
+import ClientDashboard from './pages/ClientDashboard.jsx'
+import ProviderDashboard from './pages/ProviderDashboard.jsx'
 
 // Create the router with future flags
 const router = createBrowserRouter(
@@ -28,6 +35,30 @@ const router = createBrowserRouter(
     {
       path: "/terms",
       element: <Terms />
+    },
+    {
+      path: "/login",
+      element: <Login />
+    },
+    {
+      path: "/register",
+      element: <Register />
+    },
+    {
+      path: "/services",
+      element: <Services />
+    },
+    {
+      path: "/service/:serviceId",
+      element: <ServiceDetail />
+    },
+    {
+      path: "/client/dashboard",
+      element: <ClientDashboard />
+    },
+    {
+      path: "/provider/dashboard",
+      element: <ProviderDashboard />
     }
   ],
   {
@@ -39,5 +70,7 @@ const router = createBrowserRouter(
 )
 
 createRoot(document.getElementById('root')).render(
-  <RouterProvider router={router} />
+  <AuthProvider>
+    <RouterProvider router={router} />
+  </AuthProvider>
 )

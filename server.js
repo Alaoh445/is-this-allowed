@@ -6,6 +6,7 @@ import process from 'process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -145,7 +146,567 @@ async function sendEmailNotification(to, subject, htmlContent) {
   }
 }
 
+// ============ PROFESSIONAL SERVICES MARKETPLACE ============
+
+// Simple JWT token functions (no external library needed)
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password + 'salt123').digest('hex');
+}
+
+function generateToken(userId, userType) {
+  const payload = { userId, userType, iat: Date.now() };
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64');
+  const signature = crypto.createHmac('sha256', 'secret-key').update(`${header}.${body}`).digest('base64');
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyToken(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Save user (client or service provider)
+function saveUser(userData) {
+  const filePath = path.join(dataDir, 'users.json');
+  let users = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    users = JSON.parse(fileContent || '[]');
+  }
+  
+  // Check if user already exists
+  if (users.find(u => u.email === userData.email)) {
+    throw new Error('Email already registered');
+  }
+  
+  const newUser = {
+    id: crypto.randomBytes(8).toString('hex'),
+    createdAt: new Date().toISOString(),
+    password: hashPassword(userData.password),
+    ...userData
+  };
+  
+  delete newUser.password; // Don't return password
+  
+  users.push({
+    id: newUser.id,
+    email: userData.email,
+    name: userData.name,
+    type: userData.type, // 'client' or 'provider'
+    password: hashPassword(userData.password),
+    createdAt: newUser.createdAt,
+    profile: userData.profile || {}
+  });
+  
+  fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+  console.log(`✅ User registered: ${userData.email} (${userData.type})`);
+  return newUser;
+}
+
+// Get user by email
+function getUserByEmail(email) {
+  const filePath = path.join(dataDir, 'users.json');
+  if (!fs.existsSync(filePath)) return null;
+  
+  const users = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+  return users.find(u => u.email === email);
+}
+
+// Get user by ID
+function getUserById(userId) {
+  const filePath = path.join(dataDir, 'users.json');
+  if (!fs.existsSync(filePath)) return null;
+  
+  const users = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+  const user = users.find(u => u.id === userId);
+  if (user) {
+    delete user.password; // Don't return password
+  }
+  return user;
+}
+
+// Get all services
+function getAllServices() {
+  const filePath = path.join(dataDir, 'services.json');
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+}
+
+// Save a service listing
+function saveService(serviceData) {
+  const filePath = path.join(dataDir, 'services.json');
+  let services = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    services = JSON.parse(fileContent || '[]');
+  }
+  
+  const newService = {
+    id: crypto.randomBytes(8).toString('hex'),
+    createdAt: new Date().toISOString(),
+    rating: 0,
+    reviews: [],
+    ...serviceData
+  };
+  
+  services.push(newService);
+  fs.writeFileSync(filePath, JSON.stringify(services, null, 2));
+  console.log(`✅ Service created: ${serviceData.name} by ${serviceData.providerId}`);
+  return newService;
+}
+
+// Save service request
+function saveServiceRequest(requestData) {
+  const filePath = path.join(dataDir, 'service-requests.json');
+  let requests = [];
+  
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    requests = JSON.parse(fileContent || '[]');
+  }
+  
+  const newRequest = {
+    id: crypto.randomBytes(8).toString('hex'),
+    createdAt: new Date().toISOString(),
+    status: 'pending',
+    ...requestData
+  };
+  
+  requests.push(newRequest);
+  fs.writeFileSync(filePath, JSON.stringify(requests, null, 2));
+  console.log(`✅ Service request created: ${requestData.clientId} → ${requestData.serviceId}`);
+  return newRequest;
+}
+
+// Get services by category
+function getServicesByCategory(category) {
+  const services = getAllServices();
+  return services.filter(s => s.category === category);
+}
+
+// Get services by provider
+function getServicesByProvider(providerId) {
+  const services = getAllServices();
+  return services.filter(s => s.providerId === providerId);
+}
+
+// PROFESSIONAL SERVICES CATEGORIES
+const PROFESSIONAL_CATEGORIES = [
+  { id: 'legal', name: 'Legal Services', icon: '⚖️', description: 'Lawyers, legal consultants, notaries' },
+  { id: 'health', name: 'Healthcare', icon: '🏥', description: 'Doctors, nurses, health consultants' },
+  { id: 'education', name: 'Education & Tutoring', icon: '📚', description: 'Tutors, courses, coaching' },
+  { id: 'business', name: 'Business Services', icon: '💼', description: 'Consultants, accountants, marketing' },
+  { id: 'tech', name: 'Technology & IT', icon: '💻', description: 'Web development, IT support, coding' },
+  { id: 'real-estate', name: 'Real Estate', icon: '🏠', description: 'Agents, property management' },
+  { id: 'finance', name: 'Financial Services', icon: '💰', description: 'Accountants, financial advisors, auditors' },
+  { id: 'construction', name: 'Construction & Engineering', icon: '🏗️', description: 'Contractors, architects, engineers' },
+  { id: 'automotive', name: 'Automotive Services', icon: '🚗', description: 'Mechanics, car dealers, repairs' },
+  { id: 'beauty', name: 'Beauty & Wellness', icon: '💅', description: 'Salons, spas, wellness coaches' },
+  { id: 'cleaning', name: 'Cleaning Services', icon: '🧹', description: 'House cleaning, office cleaning' },
+  { id: 'plumbing', name: 'Plumbing & Repairs', icon: '🔧', description: 'Plumbers, electricians, maintenance' }
+];
+
 // ============ API ENDPOINTS ============
+
+// ---- AUTHENTICATION ENDPOINTS ----
+
+// User Registration
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name, type, profile } = req.body;
+
+    // Validation
+    if (!email || !password || !name || !type) {
+      return res.status(400).json({ error: 'Email, password, name, and type (client/provider) are required' });
+    }
+
+    if (!['client', 'provider'].includes(type)) {
+      return res.status(400).json({ error: 'Type must be either "client" or "provider"' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const newUser = saveUser({ email, password, name, type, profile: profile || {} });
+    const token = generateToken(newUser.id, type);
+
+    res.json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        type: newUser.type
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// User Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const hashedPassword = hashPassword(password);
+    if (user.password !== hashedPassword) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const token = generateToken(user.id, user.type);
+    delete user.password;
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user,
+      token
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify Token & Get User
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    const token = req.body.token || req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Token required' });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const user = getUserById(payload.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    res.json({ success: true, user, token });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// ---- PROFESSIONAL SERVICES ENDPOINTS ----
+
+// Get all service categories
+app.get('/api/categories', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      categories: PROFESSIONAL_CATEGORIES
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all services or filter by category
+app.get('/api/services', (req, res) => {
+  try {
+    const { category } = req.query;
+    let services = getAllServices();
+
+    if (category) {
+      services = services.filter(s => s.category === category);
+    }
+
+    // Add provider details to each service
+    services = services.map(service => {
+      const provider = getUserById(service.providerId);
+      return {
+        ...service,
+        provider: provider ? {
+          id: provider.id,
+          name: provider.name,
+          profile: provider.profile
+        } : null
+      };
+    });
+
+    res.json({
+      success: true,
+      services,
+      total: services.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single service
+app.get('/api/services/:serviceId', (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const services = getAllServices();
+    const service = services.find(s => s.id === serviceId);
+
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const provider = getUserById(service.providerId);
+    service.provider = provider ? {
+      id: provider.id,
+      name: provider.name,
+      email: provider.email,
+      profile: provider.profile
+    } : null;
+
+    res.json({ success: true, service });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new service (provider only)
+app.post('/api/services', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = getUserById(payload.userId);
+    if (!user || user.type !== 'provider') {
+      return res.status(403).json({ error: 'Only service providers can create services' });
+    }
+
+    const { name, category, description, price, availability } = req.body;
+
+    if (!name || !category || !description || !price) {
+      return res.status(400).json({ error: 'Name, category, description, and price are required' });
+    }
+
+    const newService = saveService({
+      providerId: user.id,
+      name,
+      category,
+      description,
+      price,
+      availability: availability || 'Available',
+      image: req.body.image || null,
+      rating: 0,
+      reviews: []
+    });
+
+    res.json({
+      success: true,
+      message: 'Service created successfully',
+      service: newService
+    });
+  } catch (error) {
+    console.error('Create service error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get services by provider
+app.get('/api/provider/:providerId/services', (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const services = getServicesByProvider(providerId);
+
+    res.json({
+      success: true,
+      services,
+      total: services.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---- SERVICE REQUEST ENDPOINTS ----
+
+// Request a service (client)
+app.post('/api/service-requests', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = getUserById(payload.userId);
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({ error: 'Only clients can request services' });
+    }
+
+    const { serviceId, message, preferredDate, preferredTime } = req.body;
+
+    if (!serviceId) {
+      return res.status(400).json({ error: 'Service ID is required' });
+    }
+
+    // Verify service exists
+    const services = getAllServices();
+    const service = services.find(s => s.id === serviceId);
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const newRequest = saveServiceRequest({
+      clientId: user.id,
+      serviceId,
+      providerId: service.providerId,
+      message: message || '',
+      preferredDate: preferredDate || null,
+      preferredTime: preferredTime || null,
+      status: 'pending'
+    });
+
+    // Send notification to provider
+    const provider = getUserById(service.providerId);
+    if (provider) {
+      await sendEmailNotification(
+        provider.email,
+        `New Service Request: ${service.name}`,
+        `<h2>New Service Request</h2>
+         <p>A client has requested your service: <strong>${service.name}</strong></p>
+         <p><strong>Client:</strong> ${user.name}</p>
+         <p><strong>Message:</strong> ${newRequest.message || 'No message'}</p>
+         <p><strong>Preferred Date:</strong> ${newRequest.preferredDate || 'Not specified'}</p>`
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Service request submitted successfully',
+      request: newRequest
+    });
+  } catch (error) {
+    console.error('Service request error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get service requests (for client or provider)
+app.get('/api/service-requests', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const filePath = path.join(dataDir, 'service-requests.json');
+    if (!fs.existsSync(filePath)) {
+      return res.json({ success: true, requests: [] });
+    }
+
+    let requests = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+
+    // Filter based on user type
+    if (payload.userType === 'client') {
+      requests = requests.filter(r => r.clientId === payload.userId);
+    } else if (payload.userType === 'provider') {
+      requests = requests.filter(r => r.providerId === payload.userId);
+    }
+
+    // Add details
+    requests = requests.map(req => {
+      const client = getUserById(req.clientId);
+      const service = getAllServices().find(s => s.id === req.serviceId);
+      return {
+        ...req,
+        client: client ? { id: client.id, name: client.name, email: client.email } : null,
+        service: service ? { id: service.id, name: service.name, price: service.price } : null
+      };
+    });
+
+    res.json({ success: true, requests });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update service request status (provider)
+app.put('/api/service-requests/:requestId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { requestId } = req.params;
+    const { status } = req.body; // accepted, declined, completed
+
+    const filePath = path.join(dataDir, 'service-requests.json');
+    let requests = [];
+
+    if (fs.existsSync(filePath)) {
+      requests = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+    }
+
+    const requestIndex = requests.findIndex(r => r.id === requestId);
+    if (requestIndex === -1) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (requests[requestIndex].providerId !== payload.userId) {
+      return res.status(403).json({ error: 'Only the service provider can update this request' });
+    }
+
+    requests[requestIndex].status = status;
+    requests[requestIndex].updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(filePath, JSON.stringify(requests, null, 2));
+
+    // Send notification to client
+    const client = getUserById(requests[requestIndex].clientId);
+    if (client) {
+      await sendEmailNotification(
+        client.email,
+        `Service Request ${status.toUpperCase()}`,
+        `<h2>Service Request Update</h2>
+         <p>Your service request has been <strong>${status.toUpperCase()}</strong>.</p>`
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Request ${status} successfully`,
+      request: requests[requestIndex]
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Contact Form Submission
 app.post('/api/contact', async (req, res) => {
