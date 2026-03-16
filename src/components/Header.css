@@ -94,6 +94,9 @@
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .login-btn {

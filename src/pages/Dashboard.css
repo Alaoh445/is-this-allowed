@@ -426,10 +426,6 @@
   display: flex;
   gap: 10px;
 }
-
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
 .dashboard-sidebar {
   display: flex;
   flex-direction: column;
