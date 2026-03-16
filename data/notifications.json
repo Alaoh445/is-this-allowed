@@ -1,0 +1,240 @@
+[
+  {
+    "id": "76fb7f2694a5e8e3",
+    "userId": "db13b010965b57ae",
+    "title": "New Service Request: corporate legal law",
+    "message": "ella roy has requested your service \"corporate legal law\"",
+    "type": "info",
+    "relatedId": "6a8df9cac9bf75b4",
+    "read": true,
+    "createdAt": "2026-03-09T14:23:41.234Z"
+  },
+  {
+    "id": "c5c041a1e8dc7fa5",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request ACCEPTED",
+    "message": "Your request for \"corporate legal law\" has been accepted",
+    "type": "success",
+    "relatedId": "6a8df9cac9bf75b4",
+    "read": true,
+    "createdAt": "2026-03-09T14:24:14.901Z"
+  },
+  {
+    "id": "08df01dfc1533fdd",
+    "userId": "db13b010965b57ae",
+    "title": "New Service Request: Property Sales",
+    "message": "ella roy has requested your service \"Property Sales\"",
+    "type": "info",
+    "relatedId": "c00f423ac6a1775d",
+    "read": true,
+    "createdAt": "2026-03-11T12:25:22.926Z"
+  },
+  {
+    "id": "4bdf086aff21692d",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request ACCEPTED",
+    "message": "Your request for \"Property Sales\" has been accepted",
+    "type": "success",
+    "relatedId": "c00f423ac6a1775d",
+    "read": true,
+    "createdAt": "2026-03-11T12:26:31.708Z"
+  },
+  {
+    "id": "a9e42ff950f29adb",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: corporate legal law",
+    "message": "ella roy has requested your service \"corporate legal law\"",
+    "type": "info",
+    "relatedId": "6d6b1ae2e0b7209e",
+    "url": "/provider/dashboard?requestId=6d6b1ae2e0b7209e",
+    "read": true,
+    "createdAt": "2026-03-11T15:39:21.761Z"
+  },
+  {
+    "id": "592c1c6fda9e26d9",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request ACCEPTED",
+    "message": "Your request for \"corporate legal law\" has been accepted\nProvider: \"okay accepted\"",
+    "type": "success",
+    "relatedId": "6d6b1ae2e0b7209e",
+    "url": "/client/dashboard?requestId=6d6b1ae2e0b7209e",
+    "read": true,
+    "createdAt": "2026-03-11T15:40:12.130Z"
+  },
+  {
+    "id": "2790bbe68de7aa1d",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request IN_PROGRESS",
+    "message": "Your request for \"corporate legal law\" has been in_progress",
+    "type": "info",
+    "relatedId": "6d6b1ae2e0b7209e",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T11:41:27.407Z"
+  },
+  {
+    "id": "f91ab652addca958",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request COMPLETED",
+    "message": "Your request for \"corporate legal law\" has been completed",
+    "type": "info",
+    "relatedId": "6d6b1ae2e0b7209e",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T11:41:32.821Z"
+  },
+  {
+    "id": "3bcd22746a4b08d9",
+    "userId": "77fdbef802ff8064",
+    "title": "New Review for corporate legal law",
+    "message": "John doe gave a 5-star review: \"Well services done\"",
+    "type": "success",
+    "relatedId": "6e73205354d639a3",
+    "url": null,
+    "read": true,
+    "createdAt": "2026-03-16T11:43:04.223Z"
+  },
+  {
+    "id": "608dd4d0d670ea71",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: Web Development",
+    "message": "John doe has requested your service \"Web Development\"",
+    "type": "info",
+    "relatedId": "e73b3c393d9b7834",
+    "url": "/profile/14ae84acd599c327",
+    "read": true,
+    "createdAt": "2026-03-16T11:44:34.366Z"
+  },
+  {
+    "id": "6b49d2e966c90981",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request ACCEPTED",
+    "message": "Your request for \"Web Development\" has been accepted\nProvider: \"okay accepeted\"",
+    "type": "success",
+    "relatedId": "e73b3c393d9b7834",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T11:45:20.392Z"
+  },
+  {
+    "id": "f0a73d20cb9a0613",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request IN_PROGRESS",
+    "message": "Your request for \"Web Development\" has been in_progress\nProvider: \"okay accepeted\"",
+    "type": "info",
+    "relatedId": "e73b3c393d9b7834",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T11:46:55.110Z"
+  },
+  {
+    "id": "8fc94b82cf3805db",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request COMPLETED",
+    "message": "Your request for \"Web Development\" has been completed",
+    "type": "info",
+    "relatedId": "e73b3c393d9b7834",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T11:56:43.394Z"
+  },
+  {
+    "id": "1a47056c5db0868e",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: Dental Services",
+    "message": "John doe has requested your service \"Dental Services\"",
+    "type": "info",
+    "relatedId": "5df20781d0194b04",
+    "url": "/profile/14ae84acd599c327",
+    "read": true,
+    "createdAt": "2026-03-16T11:59:51.553Z"
+  },
+  {
+    "id": "be955d01826b19e5",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request ACCEPTED",
+    "message": "Your request for \"Dental Services\" has been accepted\nProvider: \"okay\"",
+    "type": "success",
+    "relatedId": "5df20781d0194b04",
+    "url": "/profile/77fdbef802ff8064",
+    "read": false,
+    "createdAt": "2026-03-16T12:00:14.011Z"
+  },
+  {
+    "id": "644a5ff452e8edd8",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request IN_PROGRESS",
+    "message": "Your request for \"Dental Services\" has been in_progress\nProvider: \"okay\"",
+    "type": "info",
+    "relatedId": "5df20781d0194b04",
+    "url": "/profile/77fdbef802ff8064",
+    "read": false,
+    "createdAt": "2026-03-16T12:00:30.666Z"
+  },
+  {
+    "id": "600fcd0dcc4a059e",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request COMPLETED",
+    "message": "Your request for \"Dental Services\" has been completed\nProvider: \"okay\"",
+    "type": "info",
+    "relatedId": "5df20781d0194b04",
+    "url": "/profile/77fdbef802ff8064",
+    "read": true,
+    "createdAt": "2026-03-16T12:00:32.221Z"
+  },
+  {
+    "id": "5564c927d8c9f9ca",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: Carpet & Upholstery",
+    "message": "John doe has requested your service \"Carpet & Upholstery\"",
+    "type": "info",
+    "relatedId": "d2b7285155606408",
+    "url": "/service-request/d2b7285155606408",
+    "read": true,
+    "createdAt": "2026-03-16T13:33:05.670Z"
+  },
+  {
+    "id": "3cf1935360ea24dd",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been accepted\nProvider: \"okay we are at your service\n\"",
+    "type": "success",
+    "relatedId": "d2b7285155606408",
+    "url": "/service-request/d2b7285155606408",
+    "read": true,
+    "createdAt": "2026-03-16T13:34:34.511Z"
+  },
+  {
+    "id": "f37ec38bd5cbd5ea",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been in_progress\nProvider: \"okay we are at your service\n\"",
+    "type": "info",
+    "relatedId": "d2b7285155606408",
+    "url": "/service-request/d2b7285155606408",
+    "read": false,
+    "createdAt": "2026-03-16T13:35:32.447Z"
+  },
+  {
+    "id": "1be408fcbb0d2a69",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been completed\nProvider: \"okay we are at your service\n\"",
+    "type": "info",
+    "relatedId": "d2b7285155606408",
+    "url": "/service-request/d2b7285155606408",
+    "read": true,
+    "createdAt": "2026-03-16T13:35:37.137Z"
+  },
+  {
+    "id": "ede69f25ceec5267",
+    "userId": "77fdbef802ff8064",
+    "title": "Service Request Update",
+    "message": "Payment received for your service \"Carpet & Upholstery\"",
+    "type": "success",
+    "relatedId": "d2b7285155606408",
+    "url": "/service-request/d2b7285155606408",
+    "read": true,
+    "createdAt": "2026-03-16T13:35:53.035Z"
+  }
+]

@@ -1,46 +1,145 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Header from '../components/Header.jsx';
 import './Dashboard.css';
 
 export default function ClientDashboard() {
-  const { user, token, logout, isClient } = useAuth();
+  const { user, token, logout, isClient, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reviewForm, setReviewForm] = useState({}); // { requestId: { rating, comment } }
 
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-  useEffect(() => {
-    if (!isClient) {
-      navigate('/login');
-      return;
+  // Helper function to make authenticated requests
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers
+    };
+    
+    try {
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token invalid, logout
+          logout();
+          navigate('/login/client');
+        }
+        throw new Error(`API Error: ${response.status}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error('Fetch error:', err);
+      throw err;
     }
-    fetchRequests();
-  }, [isClient, navigate]);
+  }, [token, logout, navigate]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${BASE_URL}/api/service-requests`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await res.json();
+      const data = await fetchWithAuth(`${BASE_URL}/api/service-requests`);
       if (data.success) {
         setRequests(data.requests || []);
       } else {
         setError(data.error || 'Failed to load requests');
       }
     } catch (err) {
+      console.error('Error loading requests:', err);
       setError('Error loading requests: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  }, [fetchWithAuth, BASE_URL]);
+
+  useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return;
+
+    if (!user) {
+      navigate('/login/client');
+      return;
+    }
+
+    // Check if user is a client
+    if (!isClient) {
+      navigate('/login/provider');
+      return;
+    }
+
+    fetchRequests();
+  }, [authLoading, user, isClient, navigate, fetchRequests]);
+
+  // Real-time polling for request status updates
+  useEffect(() => {
+    if (!isClient || !token || authLoading) return;
+
+    const interval = setInterval(() => {
+      fetchRequests();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isClient, token, authLoading, fetchRequests]);
+
+  const formatTimeString = (t) => {
+    if (!t) return '';
+    const lower = t.toLowerCase();
+    if (lower.includes('am') || lower.includes('pm')) return t;
+    const [hourStr, minute] = t.split(':');
+    let hour = parseInt(hourStr, 10);
+    if (isNaN(hour)) return t;
+    const period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour}:${minute} ${period}`;
+  };
+
+  const handlePayment = async (requestId) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/service-requests/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ paymentStatus: 'paid' })
+      });
+
+      const data = await res.json();
+      if (data.success && data.request) {
+        setRequests(prev =>
+          prev.map(r => r.id === requestId ? data.request : r)
+        );
+      }
+    } catch (err) {
+      setError('Error processing payment: ' + err.message);
+    }
+  };
+
+  const handleReview = async (requestId, review) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/service-requests/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ review })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setRequests(prev =>
+          prev.map(r => r.id === requestId ? { ...r, review } : r)
+        );
+      }
+    } catch (err) {
+      setError('Error submitting review: ' + err.message);
     }
   };
 
@@ -50,31 +149,27 @@ export default function ClientDashboard() {
       case 'accepted': return '#10b981'; // green
       case 'declined': return '#ef4444'; // red
       case 'completed': return '#667eea'; // blue
+      case 'rejected': return '#ef4444'; // red
       default: return '#6b7280';
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <div className="header-content">
-          <h1>Welcome, {user?.name}!</h1>
-          <p className="user-email">{user?.email}</p>
+    <>
+      <Header />
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <button className="btn-back" onClick={() => navigate('/')}>← Home</button>
+          <div className="header-content">
+            <h1>Welcome, {user?.name}!</h1>
+            <p className="user-email">{user?.email}</p>
+          </div>
+          <div className="header-actions">
+            <button className="btn-browse" onClick={() => navigate('/services')}>
+              Browse Services
+            </button>
+          </div>
         </div>
-        <div className="header-actions">
-          <button className="btn-browse" onClick={() => navigate('/services')}>
-            Browse Services
-          </button>
-          <button className="btn-logout" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </div>
 
       <div className="dashboard-content">
         <div className="dashboard-section">
@@ -107,9 +202,18 @@ export default function ClientDashboard() {
                   <div className="request-details">
                     <div className="detail-item">
                       <span className="detail-label">Provider:</span>
-                      <span className="detail-value">
+                      <span
+                        className="detail-value link"
+                        onClick={() => req.provider && navigate(`/profile/${req.provider.id}`)}
+                        style={{ cursor: req.provider ? 'pointer' : 'default' }}
+                      >
                         {req.provider?.name || 'Provider'}
                       </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Status:</span>
+                      <span className="detail-value">{req.status}</span>
                     </div>
 
                     <div className="detail-item">
@@ -118,6 +222,13 @@ export default function ClientDashboard() {
                         ₦{req.service?.price?.toLocaleString() || 'N/A'}
                       </span>
                     </div>
+
+                    {req.status === 'completed' && (
+                      <div className="detail-item">
+                        <span className="detail-label">Payment:</span>
+                        <span className="detail-value">{req.paymentStatus || 'Not required'}</span>
+                      </div>
+                    )}
 
                     {req.preferredDate && (
                       <div className="detail-item">
@@ -128,15 +239,32 @@ export default function ClientDashboard() {
 
                     {req.preferredTime && (
                       <div className="detail-item">
-                        <span className="detail-label">Preferred Time:</span>
-                        <span className="detail-value">{req.preferredTime}</span>
-                      </div>
-                    )}
+                                <span className="detail-label">Preferred Time:</span>
+                                <span className="detail-value">{formatTimeString(req.preferredTime)}</span>
+                              </div>
+                            )}
 
                     {req.message && (
                       <div className="detail-item">
                         <span className="detail-label">Your Message:</span>
                         <p className="detail-message">{req.message}</p>
+                      </div>
+                    )}
+
+                    {req.providerComment && (
+                      <div className="detail-item">
+                        <span className="detail-label">Provider Says:</span>
+                        <p className="detail-message">{req.providerComment}</p>
+                      </div>
+                    )}
+
+                    {req.review && (
+                      <div className="detail-item">
+                        <span className="detail-label">Your Review:</span>
+                        <div className="review-display">
+                          <div>Rating: {'⭐'.repeat(req.review.rating)}</div>
+                          <p>{req.review.comment}</p>
+                        </div>
                       </div>
                     )}
 
@@ -149,16 +277,57 @@ export default function ClientDashboard() {
                   </div>
 
                   <div className="request-actions">
-                    {req.status === 'accepted' && (
-                      <p style={{ color: '#10b981', fontWeight: 600, marginBottom: '10px' }}>
-                        ✓ Provider accepted your request. Check your email for details.
-                      </p>
+                    {req.status === 'completed' && req.paymentStatus === 'pending' && (
+                      <div className="action-buttons">
+                        <button
+                          className="btn-pay"
+                          onClick={() => handlePayment(req.id)}
+                        >
+                          💳 Pay Now (₦{req.service?.price?.toLocaleString() || 'N/A'})
+                        </button>
+                      </div>
                     )}
-                    {req.status === 'declined' && (
-                      <p style={{ color: '#ef4444', fontWeight: 600, marginBottom: '10px' }}>
-                        The provider has declined your request.
-                      </p>
+
+                    {req.status === 'completed' && req.paymentStatus === 'confirmed' && !req.review && (
+                      <div className="review-form">
+                        <h4>Leave a Review</h4>
+                        <div className="form-group">
+                          <label>Rating:</label>
+                          <select
+                            value={reviewForm[req.id]?.rating || 5}
+                            onChange={(e) => setReviewForm(prev => ({
+                              ...prev,
+                              [req.id]: { ...prev[req.id], rating: parseInt(e.target.value) }
+                            }))}
+                          >
+                            <option value={5}>⭐⭐⭐⭐⭐</option>
+                            <option value={4}>⭐⭐⭐⭐</option>
+                            <option value={3}>⭐⭐⭐</option>
+                            <option value={2}>⭐⭐</option>
+                            <option value={1}>⭐</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Comment:</label>
+                          <textarea
+                            value={reviewForm[req.id]?.comment || ''}
+                            onChange={(e) => setReviewForm(prev => ({
+                              ...prev,
+                              [req.id]: { ...prev[req.id], comment: e.target.value }
+                            }))}
+                            placeholder="Share your experience..."
+                            rows="3"
+                          />
+                        </div>
+                        <button
+                          className="btn-submit"
+                          onClick={() => handleReview(req.id, reviewForm[req.id])}
+                        >
+                          Submit Review
+                        </button>
+                      </div>
                     )}
+
                     <button className="btn-view" onClick={() => navigate('/services')}>
                       View More Services
                     </button>
@@ -200,5 +369,6 @@ export default function ClientDashboard() {
         </aside>
       </div>
     </div>
+    </>
   );
 }

@@ -7,12 +7,22 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { Buffer } from 'buffer';
+import Stripe from 'stripe';
 
 dotenv.config();
 
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_51IYCxkJvsoVETX...';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || 'http://localhost:5173';
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15'
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || '';
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB'; // Mistral free API key fallback
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const SEND_EMAIL = process.env.SEND_EMAILS === 'true'; // Set to true in .env to enable emails
@@ -30,8 +40,8 @@ if (!fs.existsSync(dataDir)) {
 // CORS configuration to handle mobile and cross-origin requests
 const corsOptions = {
   origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
 };
 
@@ -114,12 +124,13 @@ async function sendEmailNotification(to, subject, htmlContent) {
     console.log(`📧 Email notification (not sent - disabled). To: ${to}, Subject: ${subject}`);
     return { success: true, message: 'Email notification logged' };
   }
-  
+
   try {
     // You can integrate with Mailgun, SendGrid, Nodemailer, etc.
     // For now, we'll just log it
     console.log(`📧 Email would be sent to ${to}`);
     console.log(`Subject: ${subject}`);
+    console.log(`Content: ${htmlContent}`);
     
     // Format for logging
     const logPath = path.join(dataDir, 'email-log.json');
@@ -167,7 +178,7 @@ function verifyToken(token) {
     if (parts.length !== 3) return null;
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
     return payload;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -274,10 +285,17 @@ function saveServiceRequest(requestData) {
     requests = JSON.parse(fileContent || '[]');
   }
   
+  const createdAt = new Date().toISOString();
   const newRequest = {
     id: crypto.randomBytes(8).toString('hex'),
-    createdAt: new Date().toISOString(),
+    createdAt,
+    updatedAt: createdAt,
     status: 'pending',
+    paymentStatus: 'not_required',
+    paymentConfirmed: false,
+    paymentHistory: [],
+    statusHistory: [{ status: 'pending', date: createdAt }],
+    review: null,
     ...requestData
   };
   
@@ -287,16 +305,80 @@ function saveServiceRequest(requestData) {
   return newRequest;
 }
 
-// Get services by category
-function getServicesByCategory(category) {
-  const services = getAllServices();
-  return services.filter(s => s.category === category);
+// Update service request
+function updateServiceRequest(requestId, updates) {
+  const filePath = path.join(dataDir, 'service-requests.json');
+  let requests = [];
+  
+  if (fs.existsSync(filePath)) {
+    requests = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+  }
+  
+  const index = requests.findIndex(r => r.id === requestId);
+  if (index === -1) return null;
+
+  const existing = requests[index];
+  const now = new Date().toISOString();
+  const updated = {
+    ...existing,
+    ...updates,
+    updatedAt: now
+  };
+
+  // Track status history
+  if (updates.status && updates.status !== existing.status) {
+    updated.statusHistory = [
+      ...(existing.statusHistory || []),
+      { status: updates.status, date: now }
+    ];
+  }
+
+  // Track payment history
+  if (updates.paymentStatus && updates.paymentStatus !== existing.paymentStatus) {
+    updated.paymentHistory = [
+      ...(existing.paymentHistory || []),
+      { status: updates.paymentStatus, date: now }
+    ];
+    if (updates.paymentStatus === 'confirmed') {
+      updated.paymentConfirmed = true;
+    }
+  }
+
+  requests[index] = updated;
+  fs.writeFileSync(filePath, JSON.stringify(requests, null, 2));
+  return updated;
+}
+
+// Get all service requests
+// eslint-disable-next-line no-unused-vars
+function getAllServiceRequests() {
+  const filePath = path.join(dataDir, 'service-requests.json');
+  if (!fs.existsSync(filePath)) return [];
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
 }
 
 // Get services by provider
 function getServicesByProvider(providerId) {
   const services = getAllServices();
   return services.filter(s => s.providerId === providerId);
+}
+
+// Get service by ID
+function getServiceById(serviceId) {
+  const services = getAllServices();
+  return services.find(s => s.id === serviceId);
+}
+
+// Update service
+function updateService(serviceId, updates) {
+  const services = getAllServices();
+  const index = services.findIndex(s => s.id === serviceId);
+  if (index === -1) return null;
+  
+  services[index] = { ...services[index], ...updates, updatedAt: new Date().toISOString() };
+  const filePath = path.join(dataDir, 'services.json');
+  fs.writeFileSync(filePath, JSON.stringify(services, null, 2));
+  return services[index];
 }
 
 // PROFESSIONAL SERVICES CATEGORIES
@@ -314,6 +396,121 @@ const PROFESSIONAL_CATEGORIES = [
   { id: 'cleaning', name: 'Cleaning Services', icon: '🧹', description: 'House cleaning, office cleaning' },
   { id: 'plumbing', name: 'Plumbing & Repairs', icon: '🔧', description: 'Plumbers, electricians, maintenance' }
 ];
+
+// PREDEFINED SERVICES FOR EACH CATEGORY
+const PREDEFINED_SERVICES = {
+  legal: [
+    { name: 'Residential Lease Review', description: 'Professional review of rental and lease agreements' },
+    { name: 'Contract Drafting & Review', description: 'Legal document preparation and analysis' },
+    { name: 'Property Dispute Resolution', description: 'Assistance with property-related legal conflicts' },
+    { name: 'Wills & Estate Planning', description: 'Estate planning and inheritance consultation' }
+  ],
+  health: [
+    { name: 'General Medical Consultation', description: 'Primary healthcare consultation and diagnosis' },
+    { name: 'Dental Services', description: 'Comprehensive dental care and treatment' },
+    { name: 'Mental Health Counseling', description: 'Therapy and psychological counseling services' },
+    { name: 'Fitness & Nutrition Coaching', description: 'Personalized fitness and diet planning' }
+  ],
+  education: [
+    { name: 'Mathematics Tutoring', description: 'Expert math tutoring for all levels' },
+    { name: 'Language Learning', description: 'English, French, and other language instruction' },
+    { name: 'Test Preparation', description: 'JAMB, WAEC, IELTS, and certification exam prep' },
+    { name: 'Tech Bootcamp', description: 'Intensive coding and tech skill training' }
+  ],
+  business: [
+    { name: 'Business Plan Development', description: 'Strategic business planning and analysis' },
+    { name: 'Accounting & Bookkeeping', description: 'Professional accounting and financial record management' },
+    { name: 'Marketing Consultation', description: 'Digital and traditional marketing strategy' },
+    { name: 'HR Consulting', description: 'Human resources and personnel management services' }
+  ],
+  tech: [
+    { name: 'Web Development', description: 'Custom website and web application development' },
+    { name: 'Mobile App Development', description: 'iOS and Android app development services' },
+    { name: 'IT Support & Maintenance', description: '24/7 technical support and system maintenance' },
+    { name: 'Software Consulting', description: 'Technology strategy and software solutions' }
+  ],
+  'real-estate': [
+    { name: 'Property Sales', description: 'Residential and commercial property sales assistance' },
+    { name: 'Property Rental Management', description: 'Comprehensive property rental management' },
+    { name: 'Real Estate Valuation', description: 'Professional property appraisal and valuation' },
+    { name: 'Land Acquisition Assistance', description: 'Guidance in buying and acquiring land' }
+  ],
+  finance: [
+    { name: 'Financial Planning', description: 'Comprehensive personal financial planning services' },
+    { name: 'Investment Advisory', description: 'Professional investment guidance and portfolio management' },
+    { name: 'Tax Consultation', description: 'Tax planning and compliance services' },
+    { name: 'Insurance Brokerage', description: 'Insurance product selection and advisory' }
+  ],
+  construction: [
+    { name: 'Building Construction', description: 'Residential and commercial construction services' },
+    { name: 'Architectural Design', description: 'Custom architectural design and planning' },
+    { name: 'Home Renovation', description: 'Complete home renovation and restoration services' },
+    { name: 'Project Management', description: 'Professional construction project oversight' }
+  ],
+  automotive: [
+    { name: 'Vehicle Maintenance', description: 'Regular maintenance and servicing' },
+    { name: 'Engine Repair', description: 'Specialized engine repair and rebuilding' },
+    { name: 'Car Detailing', description: 'Professional vehicle cleaning and detailing' },
+    { name: 'Electrical Repair', description: 'Vehicle electrical system repair and diagnostics' }
+  ],
+  beauty: [
+    { name: 'Hair Styling & Treatment', description: 'Professional hair care and styling services' },
+    { name: 'Makeup Services', description: 'Professional makeup application and consultation' },
+    { name: 'Spa & Massage', description: 'Relaxation and therapeutic massage services' },
+    { name: 'Skincare Treatment', description: 'Professional facial and skincare services' }
+  ],
+  cleaning: [
+    { name: 'House Cleaning', description: 'Comprehensive residential cleaning services' },
+    { name: 'Office Cleaning', description: 'Commercial and office space cleaning' },
+    { name: 'Carpet & Upholstery', description: 'Professional carpet and furniture cleaning' },
+    { name: 'Specialized Cleaning', description: 'Post-construction and deep cleaning services' }
+  ],
+  plumbing: [
+    { name: 'Plumbing Installation', description: 'Water and plumbing system installation' },
+    { name: 'Electrical Work', description: 'Residential and commercial electrical services' },
+    { name: 'HVAC Services', description: 'Heating, cooling, and ventilation system services' },
+    { name: 'General Repairs', description: 'General home and facility maintenance repairs' }
+  ]
+};
+
+// Seed default services
+function seedDefaultServices() {
+  const filePath = path.join(dataDir, 'services.json');
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    if (content && content.trim().length > 10) {
+      return; // Already has services
+    }
+  }
+
+  let services = [];
+  
+  // Create demo provider (optional demo user)
+  const demoProviderId = 'demo-provider-001';
+
+  // Seed services for each category
+  Object.entries(PREDEFINED_SERVICES).forEach(([category, serviceList]) => {
+    serviceList.forEach((service) => {
+      const basePrice = Math.floor(Math.random() * 100000) + 25000; // 25,000 - 125,000 NGN
+      services.push({
+        id: crypto.randomBytes(8).toString('hex'),
+        name: service.name,
+        category,
+        description: service.description,
+        price: basePrice,
+        availability: 'Available',
+        providerId: demoProviderId,
+        createdAt: new Date().toISOString(),
+        rating: 4.5,
+        reviews: [],
+        image: null
+      });
+    });
+  });
+
+  fs.writeFileSync(filePath, JSON.stringify(services, null, 2));
+  console.log(`✅ Seeded ${services.length} default services across all categories`);
+}
 
 // ============ API ENDPOINTS ============
 
@@ -410,7 +607,7 @@ app.post('/api/auth/verify', async (req, res) => {
     }
 
     res.json({ success: true, user, token });
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 });
@@ -423,6 +620,23 @@ app.get('/api/categories', (req, res) => {
     res.json({
       success: true,
       categories: PROFESSIONAL_CATEGORIES
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get predefined services for a category (for service provider form)
+app.get('/api/predefined-services/:category', (req, res) => {
+  try {
+    const { category } = req.params;
+    const services = PREDEFINED_SERVICES[category] || [];
+
+    res.json({
+      success: true,
+      category,
+      services,
+      total: services.length
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -547,6 +761,51 @@ app.get('/api/provider/:providerId/services', (req, res) => {
   }
 });
 
+// Update service (provider only)
+app.put('/api/services/:serviceId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = getUserById(payload.userId);
+    if (!user || user.type !== 'provider') {
+      return res.status(403).json({ error: 'Only service providers can update services' });
+    }
+
+    const { serviceId } = req.params;
+    const service = getServiceById(serviceId);
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    if (service.providerId !== user.id) {
+      return res.status(403).json({ error: 'You can only update your own services' });
+    }
+
+    const { name, category, description, price, availability } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (category !== undefined) updates.category = category;
+    if (description !== undefined) updates.description = description;
+    if (price !== undefined) updates.price = price;
+    if (availability !== undefined) updates.availability = availability;
+
+    const updatedService = updateService(serviceId, updates);
+    res.json({
+      success: true,
+      message: 'Service updated successfully',
+      service: updatedService
+    });
+  } catch (error) {
+    console.error('Update service error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ---- SERVICE REQUEST ENDPOINTS ----
 
 // Request a service (client)
@@ -587,8 +846,20 @@ app.post('/api/service-requests', async (req, res) => {
       status: 'pending'
     });
 
-    // Send notification to provider
+    // Save in-app notification to provider – link directly to the requesting client's profile
     const provider = getUserById(service.providerId);
+    if (provider) {
+      saveNotification(
+        provider.id,
+        `New Service Request: ${service.name}`,
+        `${user.name} has requested your service "${service.name}"`,
+        'info',
+        newRequest.id,
+        `/service-request/${newRequest.id}`
+      );
+    }
+
+    // Send email notification to provider
     if (provider) {
       await sendEmailNotification(
         provider.email,
@@ -629,6 +900,22 @@ app.get('/api/service-requests', async (req, res) => {
 
     let requests = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
 
+    // Auto-confirm payment if it has been paid for a while
+    const AUTO_CONFIRM_DAYS = parseInt(process.env.AUTO_CONFIRM_DAYS || '3', 10);
+    const now = Date.now();
+    requests.forEach(req => {
+      if (req.status === 'completed' && req.paymentStatus === 'paid' && !req.paymentConfirmed) {
+        const updatedAt = new Date(req.updatedAt || req.createdAt).getTime();
+        const daysElapsed = (now - updatedAt) / (1000 * 60 * 60 * 24);
+        if (daysElapsed >= AUTO_CONFIRM_DAYS) {
+          updateServiceRequest(req.id, { paymentStatus: 'confirmed', paymentConfirmed: true });
+        }
+      }
+    });
+
+    // Reload requests after potential updates
+    requests = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+
     // Filter based on user type
     if (payload.userType === 'client') {
       requests = requests.filter(r => r.clientId === payload.userId);
@@ -639,10 +926,12 @@ app.get('/api/service-requests', async (req, res) => {
     // Add details
     requests = requests.map(req => {
       const client = getUserById(req.clientId);
+      const provider = getUserById(req.providerId);
       const service = getAllServices().find(s => s.id === req.serviceId);
       return {
         ...req,
-        client: client ? { id: client.id, name: client.name, email: client.email } : null,
+        client: client ? { id: client.id, name: client.name, email: client.email, profile: client.profile || {} } : null,
+        provider: provider ? { id: provider.id, name: provider.name, email: provider.email, profile: provider.profile || {} } : null,
         service: service ? { id: service.id, name: service.name, price: service.price } : null
       };
     });
@@ -653,7 +942,222 @@ app.get('/api/service-requests', async (req, res) => {
   }
 });
 
-// Update service request status (provider)
+// Create Stripe Checkout Session for a completed request (client pays)
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { requestId } = req.body;
+    const request = getAllServiceRequests().find(r => r.id === requestId);
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (payload.userType !== 'client' || request.clientId !== payload.userId) {
+      return res.status(403).json({ error: 'Only the requesting client can pay for this request' });
+    }
+
+    if (request.status !== 'completed') {
+      return res.status(400).json({ error: 'Payment is only allowed after the request is completed' });
+    }
+
+    if (request.paymentStatus === 'confirmed') {
+      return res.status(400).json({ error: 'Payment has already been confirmed' });
+    }
+
+    const service = getServiceById(request.serviceId);
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: service.name,
+              description: service.description
+            },
+            unit_amount: Math.round((service.price || 0) * 100)
+          },
+          quantity: 1
+        }
+      ],
+      mode: 'payment',
+      metadata: {
+        requestId: request.id
+      },
+      success_url: `${CLIENT_BASE_URL}/service-request/${request.id}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${CLIENT_BASE_URL}/service-request/${request.id}?cancelled=true`
+    });
+
+    res.json({ success: true, url: session.url });
+  } catch (error) {
+    console.error('Checkout session error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Stripe webhook endpoint to capture completed payments
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    if (STRIPE_WEBHOOK_SECRET) {
+      event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    } else {
+      event = req.body;
+    }
+  } catch (err) {
+    console.error('⚠️  Webhook signature verification failed.', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const requestId = session.metadata?.requestId;
+
+    if (requestId) {
+      const updated = updateServiceRequest(requestId, {
+        paymentStatus: 'paid',
+        stripeSessionId: session.id
+      });
+
+      if (updated) {
+        const request = updated;
+        const provider = getUserById(request.providerId);
+        if (provider) {
+          saveNotification(
+            provider.id,
+            'Payment Received',
+            `Payment has been completed for request #${request.id}. Please confirm receipt.`,
+            'success',
+            request.id,
+            `/service-request/${request.id}`
+          );
+        }
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// Get single service request (for timeline / invoice page)
+app.get('/api/service-requests/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const requests = getAllServiceRequests();
+    const request = requests.find(r => r.id === requestId);
+
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    // Check if user is authorized to view this request
+    if (request.clientId !== decoded.userId && request.providerId !== decoded.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Add service and user details
+    const client = getUserById(request.clientId);
+    const provider = getUserById(request.providerId);
+    const service = getServiceById(request.serviceId);
+
+    const requestWithDetails = {
+      ...request,
+      client: client ? { id: client.id, name: client.name, email: client.email, profile: client.profile || {} } : null,
+      provider: provider ? { id: provider.id, name: provider.name, email: provider.email, profile: provider.profile || {} } : null,
+      service: service ? { id: service.id, name: service.name, price: service.price, description: service.description } : null
+    };
+
+    res.json({ success: true, request: requestWithDetails });
+  } catch (error) {
+    console.error('Error fetching service request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Endpoint to fetch user profile public info
+app.get('/api/users/:userId', (req, res) => {
+  try {
+    const user = getUserById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // do not return password hash
+    delete user.password;
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to update own profile
+app.put('/api/users/:userId', (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (payload.userId !== req.params.userId) {
+      return res.status(403).json({ error: 'You can only edit your own profile' });
+    }
+
+    const filePath = path.join(dataDir, 'users.json');
+    let users = [];
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      users = JSON.parse(fileContent || '[]');
+    }
+
+    const idx = users.findIndex(u => u.id === req.params.userId);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // fields allowed to update
+    const { name, email, profile, password } = req.body;
+    if (name) users[idx].name = name;
+    if (email) users[idx].email = email;
+    if (profile && typeof profile === 'object') {
+      users[idx].profile = { ...users[idx].profile, ...profile };
+    }
+    if (password) {
+      users[idx].password = hashPassword(password);
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+    const updatedUser = { ...users[idx] };
+    delete updatedUser.password;
+    res.json({ success: true, user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update service request (status by provider, payment/review by client)
 app.put('/api/service-requests/:requestId', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -664,7 +1168,10 @@ app.put('/api/service-requests/:requestId', async (req, res) => {
     }
 
     const { requestId } = req.params;
-    const { status } = req.body; // accepted, declined, completed
+    const user = getUserById(payload.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
 
     const filePath = path.join(dataDir, 'service-requests.json');
     let requests = [];
@@ -678,35 +1185,306 @@ app.put('/api/service-requests/:requestId', async (req, res) => {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    if (requests[requestIndex].providerId !== payload.userId) {
-      return res.status(403).json({ error: 'Only the service provider can update this request' });
+    const request = requests[requestIndex];
+    const updates = {};
+    let notificationMessage = '';
+    let notificationType = 'info';
+    let notifyUserId = null;
+    let notifyUrl = '';
+
+    if (user.type === 'provider') {
+      // Provider can update status
+      if (request.providerId !== user.id) {
+        return res.status(403).json({ error: 'Only the service provider can update this request status' });
+      }
+
+      const { status, comment } = req.body;
+      if (status) {
+        const service = getServiceById(request.serviceId);
+        updates.status = status;
+        if (status === 'completed' && service && parseFloat(service.price) > 0) {
+          updates.paymentStatus = 'pending';
+        }
+        const serviceName = service ? service.name : 'service';
+        notificationMessage = `Your request for "${serviceName}" has been ${status}`;
+        if (comment) notificationMessage += `\nProvider: "${comment}"`;
+        notificationType = status === 'accepted' ? 'success' : (status === 'rejected' ? 'warning' : 'info');
+        notifyUserId = request.clientId;
+        notifyUrl = `/service-request/${request.id}`;
+      }
+      if (comment) updates.providerComment = comment;
+    } else if (user.type === 'client') {
+      // Client can update paymentStatus and review
+      if (request.clientId !== user.id) {
+        return res.status(403).json({ error: 'Only the client can update payment and review' });
+      }
+
+      const { paymentStatus, review } = req.body;
+      if (paymentStatus) {
+        if (request.status !== 'completed') {
+          return res.status(400).json({ error: 'Can only update payment for completed requests' });
+        }
+        updates.paymentStatus = paymentStatus;
+        if (paymentStatus === 'paid') {
+          const service = getServiceById(request.serviceId);
+          const serviceName = service ? service.name : 'service';
+          notificationMessage = `Payment received for your service "${serviceName}"`;
+          notificationType = 'success';
+          notifyUserId = request.providerId;
+          notifyUrl = `/service-request/${request.id}`;
+        }
+      }
+      if (review) {
+        if (request.status !== 'completed') {
+          return res.status(400).json({ error: 'Can only review completed requests' });
+        }
+        updates.review = { ...review, date: new Date().toISOString() };
+        // Optionally notify provider of review
+      }
+    } else {
+      return res.status(403).json({ error: 'Invalid user type' });
     }
 
-    requests[requestIndex].status = status;
-    requests[requestIndex].updatedAt = new Date().toISOString();
+    const updatedRequest = updateServiceRequest(requestId, updates);
 
-    fs.writeFileSync(filePath, JSON.stringify(requests, null, 2));
+    // Send notification if needed
+    if (notifyUserId && notificationMessage) {
+      const notifyUser = getUserById(notifyUserId);
+      if (notifyUser) {
+        saveNotification(
+          notifyUser.id,
+          `Service Request Update`,
+          notificationMessage,
+          notificationType,
+          requestId,
+          notifyUrl
+        );
+      }
+    }
 
-    // Send notification to client
-    const client = getUserById(requests[requestIndex].clientId);
-    if (client) {
-      await sendEmailNotification(
-        client.email,
-        `Service Request ${status.toUpperCase()}`,
-        `<h2>Service Request Update</h2>
-         <p>Your service request has been <strong>${status.toUpperCase()}</strong>.</p>`
-      );
+    res.json({ success: true, request: updatedRequest });
+  } catch (error) {
+    console.error('Update service request error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---- REVIEW ENDPOINTS ----
+
+// Get reviews for a service
+app.get('/api/services/:serviceId/reviews', (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const services = getAllServices();
+    const service = services.find(s => s.id === serviceId);
+
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
     }
 
     res.json({
       success: true,
-      message: `Request ${status} successfully`,
-      request: requests[requestIndex]
+      reviews: service.reviews || [],
+      total: (service.reviews || []).length
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Submit a review for a service (client only, after completed request)
+app.post('/api/services/:serviceId/reviews', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = getUserById(payload.userId);
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({ error: 'Only clients can submit reviews' });
+    }
+
+    const { serviceId } = req.params;
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+
+    const services = getAllServices();
+    const serviceIndex = services.findIndex(s => s.id === serviceId);
+
+    if (serviceIndex === -1) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Check if client has completed a request for this service (optional for testing)
+    // In production, you might want to require this
+    // const requests = getAllServiceRequests();
+    // const completedRequest = requests.find(r =>
+    //   r.clientId === user.id &&
+    //   r.serviceId === serviceId &&
+    //   r.status === 'completed'
+    // );
+
+    // if (!completedRequest) {
+    //   return res.status(403).json({ error: 'You can only review services you have completed' });
+    // }
+
+    // Check if already reviewed
+    const existingReview = services[serviceIndex].reviews.find(r => r.clientId === user.id);
+    if (existingReview) {
+      return res.status(400).json({ error: 'You have already reviewed this service' });
+    }
+
+    const newReview = {
+      id: Date.now().toString(),
+      clientId: user.id,
+      clientName: user.name,
+      rating: parseInt(rating),
+      comment: comment || '',
+      createdAt: new Date().toISOString()
+    };
+
+    if (!services[serviceIndex].reviews) {
+      services[serviceIndex].reviews = [];
+    }
+
+    services[serviceIndex].reviews.push(newReview);
+
+    // Update service rating
+    const totalRating = services[serviceIndex].reviews.reduce((sum, r) => sum + r.rating, 0);
+    services[serviceIndex].rating = totalRating / services[serviceIndex].reviews.length;
+
+    // Save updated services
+    const servicesFilePath = path.join(dataDir, 'services.json');
+    fs.writeFileSync(servicesFilePath, JSON.stringify(services, null, 2));
+
+    // Send in-app notification to provider
+    const provider = getUserById(services[serviceIndex].providerId);
+    if (provider) {
+      saveNotification(
+        provider.id,
+        `New Review for ${services[serviceIndex].name}`,
+        `${user.name} gave a ${rating}-star review: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"`,
+        'success',
+        services[serviceIndex].id
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Review submitted successfully',
+      review: newReview
+    });
+  } catch (error) {
+    console.error('Submit review error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---- NOTIFICATION ENDPOINTS ----
+
+// Update notifications (mark as read)
+app.put('/api/notifications/:notificationId/read', (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const filePath = path.join(dataDir, 'notifications.json');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    let notifications = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+    const notif = notifications.find(n => n.id === req.params.notificationId && n.userId === payload.userId);
+
+    if (!notif) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    notif.read = true;
+    fs.writeFileSync(filePath, JSON.stringify(notifications, null, 2));
+
+    res.json({ success: true, notification: notif });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get notifications (real-time polling endpoint)
+app.get('/api/notifications', (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const filePath = path.join(dataDir, 'notifications.json');
+    if (!fs.existsSync(filePath)) {
+      return res.json({
+        success: true,
+        notifications: [],
+        unreadCount: 0
+      });
+    }
+
+    let notifications = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
+    
+    // Filter notifications for this user
+    const userNotifications = notifications
+      .filter(n => n.userId === payload.userId)
+      .map(n => ({ ...n, url: n.url || '' }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 20); // Get last 20 notifications
+
+    const unreadCount = userNotifications.filter(n => !n.read).length;
+
+    res.json({
+      success: true,
+      notifications: userNotifications,
+      unreadCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to save notification
+function saveNotification(userId, title, message, type = 'info', relatedId = null, url = null) {
+  const filePath = path.join(dataDir, 'notifications.json');
+  let notifications = [];
+
+  if (fs.existsSync(filePath)) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    notifications = JSON.parse(fileContent || '[]');
+  }
+
+  const newNotification = {
+    id: crypto.randomBytes(8).toString('hex'),
+    userId,
+    title,
+    message,
+    type, // 'info', 'success', 'warning', 'error'
+    relatedId,
+    url,
+    read: false,
+    createdAt: new Date().toISOString()
+  };
+
+  notifications.push(newNotification);
+  fs.writeFileSync(filePath, JSON.stringify(notifications, null, 2));
+  return newNotification;
+}
 
 // Contact Form Submission
 app.post('/api/contact', async (req, res) => {
@@ -792,7 +1570,7 @@ app.post('/api/newsletter', async (req, res) => {
     }
     
     // Save subscriber
-    const subscriber = saveNewsletterSubscriber(email);
+    saveNewsletterSubscriber(email);
     
     // Send confirmation email
     await sendEmailNotification(
@@ -912,7 +1690,7 @@ app.get('/api/admin/contacts', (req, res) => {
     }
     const contacts = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(contacts);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to retrieve contacts' });
   }
 });
@@ -925,7 +1703,7 @@ app.get('/api/admin/subscribers', (req, res) => {
     }
     const subscribers = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(subscribers);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to retrieve subscribers' });
   }
 });
@@ -938,7 +1716,7 @@ app.get('/api/admin/bookings', (req, res) => {
     }
     const bookings = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(bookings);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to retrieve bookings' });
   }
 });
@@ -1434,6 +2212,9 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
+  // Seed default services on startup
+  seedDefaultServices();
+  
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`📝 API endpoint: http://localhost:${PORT}/api/answer`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);

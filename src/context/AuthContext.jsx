@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect } from 'react';
 
 export const AuthContext = createContext();
@@ -10,42 +11,30 @@ export function AuthProvider({ children }) {
 
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-  // Load auth state from localStorage on mount
+  // Load auth state from localStorage on mount - simple and reliable
   useEffect(() => {
-    const savedToken = localStorage.getItem('authToken');
-    const savedUser = localStorage.getItem('authUser');
+    const loadAuthState = () => {
+      try {
+        const savedToken = localStorage.getItem('authToken');
+        const savedUser = localStorage.getItem('authUser');
 
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      verifyToken(savedToken);
-    }
-    setLoading(false);
-  }, []);
-
-  const verifyToken = async (tok) => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tok })
-      });
-
-      if (!res.ok) {
-        logout();
-        return false;
+        if (savedToken && savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          setToken(savedToken);
+          setUser(parsedUser);
+          console.log('✅ Auth state restored from localStorage:', parsedUser.email);
+        }
+      } catch (err) {
+        console.error('❌ Error loading auth state:', err);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const data = await res.json();
-      setUser(data.user);
-      setToken(tok);
-      return true;
-    } catch (err) {
-      console.error('Token verification failed:', err);
-      logout();
-      return false;
-    }
-  };
+    loadAuthState();
+  }, []);
 
   const register = async (email, password, name, type, profile = {}) => {
     setError(null);
@@ -58,7 +47,7 @@ export function AuthProvider({ children }) {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         throw new Error(data.error || 'Registration failed');
       }
 
@@ -66,11 +55,14 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('authUser', JSON.stringify(data.user));
+      console.log('✅ User registered successfully:', email);
 
       return { success: true, user: data.user, token: data.token };
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorMsg = err.message || 'Registration failed';
+      setError(errorMsg);
+      console.error('❌ Registration error:', errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -85,19 +77,26 @@ export function AuthProvider({ children }) {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         throw new Error(data.error || 'Login failed');
+      }
+
+      if (!data.user || !data.token) {
+        throw new Error('Invalid server response - missing user or token');
       }
 
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('authUser', JSON.stringify(data.user));
+      console.log('✅ User logged in successfully:', email, 'Type:', data.user.type);
 
       return { success: true, user: data.user, token: data.token };
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorMsg = err.message || 'Login failed';
+      setError(errorMsg);
+      console.error('❌ Login error:', errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -105,8 +104,20 @@ export function AuthProvider({ children }) {
     setUser(null);
     setToken(null);
     setError(null);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
+    localStorage.clear();
+  };
+
+  // update user object in context and localStorage after profile changes
+  const updateUser = (updates) => {
+    setUser(prev => {
+      const updated = { ...prev, ...updates };
+      try {
+        localStorage.setItem('authUser', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Error saving updated user to localStorage', err);
+      }
+      return updated;
+    });
   };
 
   return (
@@ -118,7 +129,7 @@ export function AuthProvider({ children }) {
       register,
       login,
       logout,
-      verifyToken,
+      updateUser,
       isAuthenticated: !!token,
       isClient: user?.type === 'client',
       isProvider: user?.type === 'provider'

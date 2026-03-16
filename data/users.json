@@ -1,11 +1,51 @@
 [
   {
     "id": "14ae84acd599c327",
-    "email": "ellaroy489@gmail.com",
-    "name": "ella roy",
+    "email": "Johndoe@gmail.com",
+    "name": "John doe",
     "type": "client",
     "password": "439420444a939dd024503924fc26824b7cd34f085915a4116dcd122afb894217",
     "createdAt": "2026-03-01T16:30:32.903Z",
+    "profile": {
+      "phone": "07057396560",
+      "bio": "I am actively seeking a reputable trusted service provider"
+    }
+  },
+  {
+    "id": "db13b010965b57ae",
+    "email": "Johndoe@gmail.com",
+    "name": "John doe",
+    "type": "provider",
+    "password": "439420444a939dd024503924fc26824b7cd34f085915a4116dcd122afb894217",
+    "createdAt": "2026-03-06T01:32:45.382Z",
+    "profile": {
+      "specialization": "General Practice",
+      "experience": "8",
+      "bio": "General Practice",
+      "phone": "+2347057396560"
+    }
+  },
+  {
+    "id": "852778381c69ad7f",
+    "email": "alaosodiq53@gmail.com",
+    "name": "Sodiq Alao",
+    "type": "client",
+    "password": "439420444a939dd024503924fc26824b7cd34f085915a4116dcd122afb894217",
+    "createdAt": "2026-03-07T15:15:54.714Z",
     "profile": {}
+  },
+  {
+    "id": "77fdbef802ff8064",
+    "email": "alaosodiq54@gmail.com",
+    "name": "Sodiq Alao",
+    "type": "provider",
+    "password": "439420444a939dd024503924fc26824b7cd34f085915a4116dcd122afb894217",
+    "createdAt": "2026-03-11T15:36:45.422Z",
+    "profile": {
+      "specialization": "General Practice",
+      "experience": "3",
+      "bio": "I am providing services. you can reach out to me",
+      "phone": "+2347057396560"
+    }
   }
 ]

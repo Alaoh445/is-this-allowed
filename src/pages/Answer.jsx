@@ -3,6 +3,127 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import Footer from "../components/Footer.jsx";
 
+// Function to analyze question and suggest relevant services
+const getSuggestedServices = (question) => {
+  const questionLower = question.toLowerCase();
+  const suggestions = [];
+
+  // Legal Services
+  if (questionLower.includes('law') || questionLower.includes('legal') || questionLower.includes('court') ||
+      questionLower.includes('contract') || questionLower.includes('divorce') || questionLower.includes('marriage') ||
+      questionLower.includes('property') || questionLower.includes('inheritance') || questionLower.includes('will')) {
+    suggestions.push({
+      category: 'legal',
+      name: 'Legal Services',
+      icon: '⚖️',
+      description: 'Get professional legal advice and assistance',
+      reason: 'Your question involves legal matters'
+    });
+  }
+
+  // Healthcare Services
+  if (questionLower.includes('health') || questionLower.includes('medical') || questionLower.includes('doctor') ||
+      questionLower.includes('hospital') || questionLower.includes('treatment') || questionLower.includes('medicine') ||
+      questionLower.includes('insurance') || questionLower.includes('pharmacy')) {
+    suggestions.push({
+      category: 'health',
+      name: 'Healthcare Services',
+      icon: '🏥',
+      description: 'Find healthcare professionals and medical services',
+      reason: 'Your question relates to health and medical matters'
+    });
+  }
+
+  // Business Services
+  if (questionLower.includes('business') || questionLower.includes('company') || questionLower.includes('startup') ||
+      questionLower.includes('tax') || questionLower.includes('accounting') || questionLower.includes('finance') ||
+      questionLower.includes('marketing') || questionLower.includes('consulting')) {
+    suggestions.push({
+      category: 'business',
+      name: 'Business Services',
+      icon: '💼',
+      description: 'Professional business consulting and financial services',
+      reason: 'Your question involves business or financial matters'
+    });
+  }
+
+  // Education & Tutoring
+  if (questionLower.includes('education') || questionLower.includes('school') || questionLower.includes('university') ||
+      questionLower.includes('study') || questionLower.includes('exam') || questionLower.includes('tutor') ||
+      questionLower.includes('course') || questionLower.includes('training')) {
+    suggestions.push({
+      category: 'education',
+      name: 'Education & Tutoring',
+      icon: '📚',
+      description: 'Educational services and academic tutoring',
+      reason: 'Your question relates to education and learning'
+    });
+  }
+
+  // Technology & IT
+  if (questionLower.includes('computer') || questionLower.includes('software') || questionLower.includes('website') ||
+      questionLower.includes('app') || questionLower.includes('programming') || questionLower.includes('tech') ||
+      questionLower.includes('internet') || questionLower.includes('digital')) {
+    suggestions.push({
+      category: 'tech',
+      name: 'Technology & IT',
+      icon: '💻',
+      description: 'IT support, software development, and tech services',
+      reason: 'Your question involves technology or IT matters'
+    });
+  }
+
+  // Real Estate
+  if (questionLower.includes('property') || questionLower.includes('house') || questionLower.includes('land') ||
+      questionLower.includes('rent') || questionLower.includes('lease') || questionLower.includes('real estate') ||
+      questionLower.includes('mortgage') || questionLower.includes('building')) {
+    suggestions.push({
+      category: 'real-estate',
+      name: 'Real Estate Services',
+      icon: '🏠',
+      description: 'Property management and real estate services',
+      reason: 'Your question involves property or real estate matters'
+    });
+  }
+
+  // Construction & Engineering
+  if (questionLower.includes('construction') || questionLower.includes('building') || questionLower.includes('engineer') ||
+      questionLower.includes('architecture') || questionLower.includes('contractor') || questionLower.includes('repair')) {
+    suggestions.push({
+      category: 'construction',
+      name: 'Construction & Engineering',
+      icon: '🏗️',
+      description: 'Construction, engineering, and repair services',
+      reason: 'Your question relates to construction or engineering'
+    });
+  }
+
+  // Automotive Services
+  if (questionLower.includes('car') || questionLower.includes('vehicle') || questionLower.includes('auto') ||
+      questionLower.includes('mechanic') || questionLower.includes('repair') || questionLower.includes('driving')) {
+    suggestions.push({
+      category: 'automotive',
+      name: 'Automotive Services',
+      icon: '🚗',
+      description: 'Car repair, maintenance, and automotive services',
+      reason: 'Your question involves automotive matters'
+    });
+  }
+
+  // If no specific matches, suggest general professional services
+  if (suggestions.length === 0) {
+    suggestions.push({
+      category: 'business',
+      name: 'Professional Services',
+      icon: '👔',
+      description: 'Connect with qualified professionals for your needs',
+      reason: 'Consider professional assistance for your question'
+    });
+  }
+
+  return suggestions.slice(0, 3); // Limit to 3 suggestions
+};
+
 function Answer() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -11,6 +132,7 @@ function Answer() {
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [suggestedServices, setSuggestedServices] = useState([]);
 
   useEffect(() => {
     const fetchAnswer = async () => {
@@ -43,6 +165,11 @@ function Answer() {
         const data = await response.json();
         console.log("Answer received:", data);
         setAnswer(data);
+        
+        // Generate service suggestions based on the question
+        const suggestions = getSuggestedServices(decodedQuestion);
+        setSuggestedServices(suggestions);
+        
         setError(null);
       } catch (err) {
         console.error("Error:", err);
@@ -245,7 +372,7 @@ function Answer() {
               color: "#555"
             }}>
               {answer.actions.map((action, index) => (
-                <li key={index} style={{ marginBottom: "8px" }}>
+                <li key={`action-${index}`} style={{ marginBottom: "8px" }}>
                   <strong>Step {index + 1}:</strong> {action}
                 </li>
               ))}
@@ -273,7 +400,7 @@ function Answer() {
                 const videoId = youtubeMatch ? youtubeMatch[1] : null;
                 
                 return (
-                  <div key={index}>
+                  <div key={url ? url : `video-${index}`}>
                     {videoId ? (
                       <iframe
                         width="100%"
@@ -318,7 +445,7 @@ function Answer() {
               fontSize: "1rem"
             }}>
               {answer.sources.map((source, index) => (
-                <li key={index} style={{ marginBottom: "10px" }}>
+                <li key={source.url ? source.url : `source-${index}`} style={{ marginBottom: "10px" }}>
                   <a 
                     href={source.url} 
                     target="_blank" 
@@ -337,6 +464,78 @@ function Answer() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Service Suggestions */}
+        {suggestedServices.length > 0 && (
+          <div style={{
+            backgroundColor: "#e8f5e8",
+            padding: "25px",
+            borderRadius: "8px",
+            marginBottom: "30px",
+            borderLeft: "5px solid #28a745"
+          }}>
+            <h3 style={{ marginTop: "0", color: "#155724" }}>💡 Professional Services That May Help:</h3>
+            <p style={{ fontSize: "0.95rem", color: "#155724", marginBottom: "20px" }}>
+              Based on your question, here are relevant professional services you might consider:
+            </p>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "15px"
+            }}>
+              {suggestedServices.map((service, index) => (
+                <div key={service.category ? service.category : `suggestion-${index}`} style={{
+                  backgroundColor: "white",
+                  padding: "20px",
+                  borderRadius: "8px",
+                  border: "1px solid #c3e6cb",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                }}
+                onClick={() => navigate(`/services?category=${service.category}`)}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+                }}
+                >
+                  <div style={{ fontSize: "2rem", marginBottom: "10px" }}>{service.icon}</div>
+                  <h4 style={{ margin: "0 0 8px 0", color: "#155724" }}>{service.name}</h4>
+                  <p style={{ margin: "0 0 10px 0", color: "#666", fontSize: "0.9rem" }}>
+                    {service.description}
+                  </p>
+                  <p style={{ margin: "0", color: "#28a745", fontSize: "0.8rem", fontStyle: "italic" }}>
+                    {service.reason}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: "20px" }}>
+              <button
+                onClick={() => navigate('/services')}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease"
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = "#218838"}
+                onMouseLeave={(e) => e.target.style.backgroundColor = "#28a745"}
+              >
+                Browse All Services
+              </button>
+            </div>
           </div>
         )}
 

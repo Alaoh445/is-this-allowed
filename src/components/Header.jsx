@@ -1,11 +1,47 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import Notifications from './Notifications';
 import './Header.css';
+
+const AuthButtons = ({ showLogin, setShowLogin, navigate }) => {
+  return (
+    <>
+      {showLogin && (
+        <button
+          className="nav-button login-btn shared-color"
+          onClick={() => navigate('/login')}
+        >
+          Login
+        </button>
+      )}
+      <button
+        className={`nav-button register-btn ${showLogin ? 'shared-color' : ''}`}
+        onClick={() => {
+          // navigate to register page
+          setShowLogin(true);
+          navigate('/register');
+        }}
+      >
+        <span className="register-text">Register</span>
+        <span
+          className="register-caret"
+          onClick={(e) => { e.stopPropagation(); setShowLogin(s => !s); }}
+          role="button"
+          aria-label="Toggle login"
+        >
+          ▾
+        </span>
+      </button>
+    </>
+  );
+};
 
 function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [showLogin, setShowLogin] = React.useState(false);
   const [showMobileMenu, setShowMobileMenu] = React.useState(false);
 
@@ -13,39 +49,6 @@ function Header() {
     logout();
     navigate('/');
     setShowMobileMenu(false);
-  };
-
-  const AuthButtons = () => {
-    return (
-      <>
-        {showLogin && (
-          <button
-            className="nav-button login-btn shared-color"
-            onClick={() => navigate('/login')}
-          >
-            Login
-          </button>
-        )}
-        <button
-          className={`nav-button register-btn ${showLogin ? 'shared-color' : ''}`}
-          onClick={() => {
-            // navigate to register page
-            setShowLogin(true);
-            navigate('/register');
-          }}
-        >
-          <span className="register-text">Register</span>
-          <span
-            className="register-caret"
-            onClick={(e) => { e.stopPropagation(); setShowLogin(s => !s); }}
-            role="button"
-            aria-label="Toggle login"
-          >
-            ▾
-          </span>
-        </button>
-      </>
-    );
   };
 
   return (
@@ -67,14 +70,25 @@ function Header() {
           <button className="nav-button services-btn shared-color" onClick={() => navigate('/services')}>Services</button>
           {isAuthenticated ? (
             <>
+              <Notifications />
               <div className="nav-user">
                 <span className="user-name">{user?.name}</span>
               </div>
+              <button className="nav-button profile-btn" onClick={() => navigate('/profile')}>Profile</button>
               <button className="nav-button dashboard-btn" onClick={() => navigate(user?.type === 'client' ? '/client/dashboard' : '/provider/dashboard')}>Dashboard</button>
+              <button className="nav-button theme-toggle" onClick={toggleTheme} title="Toggle theme">
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
               <button className="nav-button logout-btn" onClick={handleLogout}>Logout</button>
             </>
           ) : (
-            <AuthButtons />
+            <>
+              <AuthButtons showLogin={showLogin} setShowLogin={setShowLogin} navigate={navigate} />
+              {/* theme toggle even when not logged in */}
+              <button className="nav-button theme-toggle" onClick={toggleTheme} title="Toggle theme">
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </>
           )}
         </nav>
 
@@ -84,12 +98,18 @@ function Header() {
             <>
               {showLogin && <button className="mobile-item" onClick={() => { setShowMobileMenu(false); navigate('/login'); }}>Login</button>}
               <button className="mobile-item register-btn" onClick={() => { setShowLogin(true); setShowMobileMenu(false); navigate('/register'); }}>Register</button>
+              <button className="mobile-item theme-toggle" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} title="Toggle theme">
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
             </>
           ) : (
             <>
               <div className="mobile-user">Signed in as {user?.name}</div>
               <button className="mobile-item" onClick={() => { setShowMobileMenu(false); navigate(user?.type === 'client' ? '/client/dashboard' : '/provider/dashboard'); }}>Dashboard</button>
               <button className="mobile-item logout-btn" onClick={() => { handleLogout(); setShowMobileMenu(false); }}>Logout</button>
+              <button className="mobile-item theme-toggle" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} title="Toggle theme">
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
             </>
           )}
         </div>

@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import './Services.css';
 
 const PROFESSIONAL_CATEGORIES = [
   { id: 'legal', name: 'Legal Services', icon: '⚖️', description: 'Lawyers, legal consultants, contract reviews' },
-  { id: 'healthcare', name: 'Healthcare', icon: '🏥', description: 'Doctors, therapists, health consultants' },
-  { id: 'education', name: 'Education', icon: '📚', description: 'Tutors, trainers, academic support' },
+  { id: 'health', name: 'Healthcare', icon: '🏥', description: 'Doctors, therapists, health consultants' },
+  { id: 'education', name: 'Education & Tutoring', icon: '📚', description: 'Tutors, trainers, academic support' },
   { id: 'business', name: 'Business Services', icon: '💼', description: 'Consulting, accounting, HR services' },
-  { id: 'tech', name: 'Technology', icon: '💻', description: 'Developers, IT support, web designers' },
+  { id: 'tech', name: 'Technology & IT', icon: '💻', description: 'Developers, IT support, web designers' },
   { id: 'real-estate', name: 'Real Estate', icon: '🏠', description: 'Agents, property managers, appraisers' },
-  { id: 'finance', name: 'Finance', icon: '💰', description: 'Financial advisors, accountants, planners' },
-  { id: 'construction', name: 'Construction', icon: '🏗️', description: 'Contractors, architects, engineers' },
-  { id: 'automotive', name: 'Automotive', icon: '🚗', description: 'Mechanics, repairers, detailers' },
+  { id: 'finance', name: 'Financial Services', icon: '💰', description: 'Financial advisors, accountants, planners' },
+  { id: 'construction', name: 'Construction & Engineering', icon: '🏗️', description: 'Contractors, architects, engineers' },
+  { id: 'automotive', name: 'Automotive Services', icon: '🚗', description: 'Mechanics, repairers, detailers' },
   { id: 'beauty', name: 'Beauty & Wellness', icon: '💅', description: 'Stylists, beauticians, wellness experts' },
   { id: 'cleaning', name: 'Cleaning Services', icon: '🧹', description: 'House cleaning, office cleaning, laundry' },
-  { id: 'plumbing', name: 'Home Services', icon: '🔧', description: 'Plumbers, electricians, handymen' }
+  { id: 'plumbing', name: 'Plumbing & Repairs', icon: '🔧', description: 'Plumbers, electricians, handymen' }
 ];
 
 import Header from '../components/Header.jsx';
@@ -24,35 +24,27 @@ export default function Services() {
   const [searchParams] = useSearchParams();
   const category = searchParams.get('category');
   const [services, setServices] = useState([]);
-  const [categories, setCategories] = useState(PROFESSIONAL_CATEGORIES);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(category || 'all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('name');
 
   // use relative path so serverless functions work both locally and when deployed
-  const BASE_URL = '';
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-  useEffect(() => {
-    fetchServices();
-  }, [selectedCategory]);
-
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      let url = `/api/services`;
+      let url = `${BASE_URL}/api/services`;
       if (selectedCategory && selectedCategory !== 'all') {
         url += `?category=${selectedCategory}`;
       }
 
       const res = await fetch(url);
-      const contentType = res.headers.get('content-type') || '';
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
-      }
-      if (!contentType.includes('application/json')) {
-        const text = await res.text();
-        throw new Error('Unexpected response: ' + text.slice(0, 100));
       }
       const data = await res.json();
 
@@ -62,22 +54,46 @@ export default function Services() {
         setError(data.error || 'Failed to load services');
       }
     } catch (err) {
+      console.error('Error loading services:', err);
       setError('Error loading services: ' + err.message);
-      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, BASE_URL]);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
 
   const getCategoryIcon = (catId) => {
-    const cat = categories.find(c => c.id === catId);
+    const cat = PROFESSIONAL_CATEGORIES.find(c => c.id === catId);
     return cat ? cat.icon : '📌';
   };
 
   const getCategoryName = (catId) => {
-    const cat = categories.find(c => c.id === catId);
+    const cat = PROFESSIONAL_CATEGORIES.find(c => c.id === catId);
     return cat ? cat.name : catId;
   };
+
+  const filteredServices = services
+    .filter(service =>
+      service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getCategoryName(service.category).toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'price-low':
+          return a.price - b.price;
+        case 'price-high':
+          return b.price - a.price;
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'name':
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
 
   return (
     <>
@@ -100,6 +116,26 @@ export default function Services() {
         <div className="services-header">
         <h1>Professional Services</h1>
         <p>Browse and request services from qualified professionals</p>
+        
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="sort-select"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="rating">Highest Rated</option>
+          </select>
+        </div>
       </div>
 
       <div className="services-layout">
@@ -113,7 +149,7 @@ export default function Services() {
             >
               All Services
             </button>
-            {categories.map(cat => (
+            {PROFESSIONAL_CATEGORIES.map(cat => (
               <button
                 key={cat.id}
                 className={`category-btn ${selectedCategory === cat.id ? 'active' : ''}`}
@@ -140,14 +176,14 @@ export default function Services() {
 
           {loading ? (
             <div className="loading">Loading services...</div>
-          ) : services.length === 0 ? (
+          ) : filteredServices.length === 0 ? (
             <div className="no-services">
-              <p>No services found in this category.</p>
-              <p>Check back later or browse other categories.</p>
+              <p>No services found matching your criteria.</p>
+              <p>Try adjusting your search or browse other categories.</p>
             </div>
           ) : (
             <div className="services-grid">
-              {services.map(service => (
+              {filteredServices.map(service => (
                 <Link
                   key={service.id}
                   to={`/service/${service.id}`}

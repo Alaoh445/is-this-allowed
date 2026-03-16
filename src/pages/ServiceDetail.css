@@ -198,6 +198,22 @@
 
 .provider-exp {
   font-size: 13px;
+}
+
+/* custom time selectors for request form */
+.time-group .time-selectors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-group select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
   color: #888;
   margin: 0;
 }
@@ -424,4 +440,116 @@
   .btn-cancel {
     width: 100%;
   }
+}
+
+/* Reviews Section */
+.reviews-section {
+  margin-top: 60px;
+  padding: 40px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.reviews-section h2 {
+  font-size: 24px;
+  margin-bottom: 30px;
+  color: #1f2937;
+}
+
+.review-submission {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.btn-write-review {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-write-review:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-form h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.review-form select {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-item {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-author strong {
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.review-rating {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+.review-date {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.review-comment {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 14px;
+}
+
+.no-reviews {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+  font-style: italic;
 }

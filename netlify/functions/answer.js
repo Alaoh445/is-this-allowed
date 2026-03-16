@@ -1,5 +1,6 @@
 // API Keys from environment or hardcoded fallback
 // Try multiple sources: process.env (Netlify), netlify.toml, .env.production
+/* global process, exports */
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -26,7 +27,7 @@ const legalSources = [
   { title: "Avvo - Lawyer Directory", url: "https://www.avvo.com/" }
 ];
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   // Handle OPTIONS request for CORS
   if (event.httpMethod === 'OPTIONS') {
     return {

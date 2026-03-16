@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
 export default function Login() {
+  const { role } = useParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState('client'); // client or provider
+  // default selection comes from role param if present
+  const [userType, setUserType] = useState(role || 'client'); // client or provider
+  // remove hideSelector so we always show options
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,11 +24,16 @@ export default function Login() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        // Redirect based on user type
-        if (result.user.type === 'client') {
-          navigate('/client/dashboard');
+        // enforce selected user type matches actual type
+        if (result.user.type !== userType) {
+          setError(`Account type mismatch. You selected "${userType}" but this account is a "${result.user.type}".`);
+          logout();
         } else {
-          navigate('/provider/dashboard');
+          if (result.user.type === 'client') {
+            navigate('/client/dashboard');
+          } else {
+            navigate('/provider/dashboard');
+          }
         }
       } else {
         setError(result.error);

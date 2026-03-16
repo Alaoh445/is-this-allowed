@@ -156,6 +156,11 @@
   background: #f9f9f9;
 }
 
+.request-card.highlight {
+  border-color: #667eea;
+  background: #eef3ff;
+}
+
 .request-header {
   display: flex;
   justify-content: space-between;
@@ -200,6 +205,12 @@
 .detail-value {
   color: #333;
   flex: 1;
+}
+
+/* clickable link style */
+.detail-value.link {
+  color: #667eea;
+  text-decoration: underline;
 }
 
 .detail-message {
@@ -398,6 +409,24 @@
 
 .btn-browse-large:hover {
   transform: translateY(-2px);
+}
+
+/* provider dashboard comment input styling */
+.comment-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  resize: vertical;
+}
+
+.request-actions .action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
