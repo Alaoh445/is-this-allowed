@@ -212,7 +212,7 @@
     "type": "info",
     "relatedId": "d2b7285155606408",
     "url": "/service-request/d2b7285155606408",
-    "read": false,
+    "read": true,
     "createdAt": "2026-03-16T13:35:32.447Z"
   },
   {
@@ -236,5 +236,71 @@
     "url": "/service-request/d2b7285155606408",
     "read": true,
     "createdAt": "2026-03-16T13:35:53.035Z"
+  },
+  {
+    "id": "4d94d80e07ec6a14",
+    "userId": "77fdbef802ff8064",
+    "title": "New Review for Carpet & Upholstery",
+    "message": "John doe gave a 5-star review: \"excellent service\"",
+    "type": "success",
+    "relatedId": "1b294ab1ce23f654",
+    "url": null,
+    "read": true,
+    "createdAt": "2026-03-17T14:32:27.426Z"
+  },
+  {
+    "id": "19cd22691411f136",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: Carpet & Upholstery",
+    "message": "John doe has requested your service \"Carpet & Upholstery\"",
+    "type": "info",
+    "relatedId": "327df42e59ef55b4",
+    "url": "/service-request/327df42e59ef55b4",
+    "read": true,
+    "createdAt": "2026-03-17T14:33:00.973Z"
+  },
+  {
+    "id": "0a9ab31e5f973c7f",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been accepted\nProvider: \"okay here for all your needs\"",
+    "type": "success",
+    "relatedId": "327df42e59ef55b4",
+    "url": "/service-request/327df42e59ef55b4",
+    "read": true,
+    "createdAt": "2026-03-17T14:34:21.043Z"
+  },
+  {
+    "id": "7a3f37a4634d717c",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been in_progress",
+    "type": "info",
+    "relatedId": "327df42e59ef55b4",
+    "url": "/service-request/327df42e59ef55b4",
+    "read": true,
+    "createdAt": "2026-03-17T14:35:57.311Z"
+  },
+  {
+    "id": "8156e03c5d3419c7",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Carpet & Upholstery\" has been completed",
+    "type": "info",
+    "relatedId": "327df42e59ef55b4",
+    "url": "/service-request/327df42e59ef55b4",
+    "read": true,
+    "createdAt": "2026-03-17T14:36:23.512Z"
+  },
+  {
+    "id": "6bd7f2421b1b590f",
+    "userId": "77fdbef802ff8064",
+    "title": "Service Request Update",
+    "message": "Payment received for your service \"Carpet & Upholstery\"",
+    "type": "success",
+    "relatedId": "327df42e59ef55b4",
+    "url": "/service-request/327df42e59ef55b4",
+    "read": true,
+    "createdAt": "2026-03-17T14:36:54.461Z"
   }
 ]
