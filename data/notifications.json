@@ -302,5 +302,60 @@
     "url": "/service-request/327df42e59ef55b4",
     "read": true,
     "createdAt": "2026-03-17T14:36:54.461Z"
+  },
+  {
+    "id": "f6b6b99000bfef15",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: corporate legal law",
+    "message": "John doe has requested your service \"corporate legal law\"",
+    "type": "info",
+    "relatedId": "779df52c7396509d",
+    "url": "/service-request/779df52c7396509d",
+    "read": true,
+    "createdAt": "2026-03-19T00:16:26.486Z"
+  },
+  {
+    "id": "1ea94a7766308377",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"corporate legal law\" has been accepted",
+    "type": "success",
+    "relatedId": "779df52c7396509d",
+    "url": "/service-request/779df52c7396509d",
+    "read": true,
+    "createdAt": "2026-03-19T00:18:28.074Z"
+  },
+  {
+    "id": "c67b782fe1f072a5",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"corporate legal law\" has been in_progress",
+    "type": "info",
+    "relatedId": "779df52c7396509d",
+    "url": "/service-request/779df52c7396509d",
+    "read": true,
+    "createdAt": "2026-03-19T00:18:38.404Z"
+  },
+  {
+    "id": "3fcf5b3388b8b742",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"corporate legal law\" has been completed",
+    "type": "info",
+    "relatedId": "779df52c7396509d",
+    "url": "/service-request/779df52c7396509d",
+    "read": true,
+    "createdAt": "2026-03-19T00:18:56.071Z"
+  },
+  {
+    "id": "b5f721f1db6462df",
+    "userId": "77fdbef802ff8064",
+    "title": "Service Request Update",
+    "message": "Payment received for your service \"corporate legal law\"",
+    "type": "success",
+    "relatedId": "779df52c7396509d",
+    "url": "/service-request/779df52c7396509d",
+    "read": true,
+    "createdAt": "2026-03-19T00:19:13.189Z"
   }
 ]
