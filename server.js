@@ -37,15 +37,36 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// CORS configuration to handle mobile and cross-origin requests
+// CORS configuration - Allow all origins for Vercel and Render deployment
 const corsOptions = {
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: true, // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
+  credentials: true,
+  optionsSuccessStatus: 200,
+  maxAge: 86400
 };
 
+// Apply CORS middleware FIRST, before any routes
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Add explicit CORS headers for all responses - this is critical
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // Handle OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 app.use(express.json());
 
 // ============ DATA STORAGE FUNCTIONS ============

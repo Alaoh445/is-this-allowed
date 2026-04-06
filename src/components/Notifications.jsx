@@ -19,9 +19,22 @@ export default function Notifications() {
     const fetchNotifications = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/notifications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         });
-        if (!res.ok) return;
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            setNotifications([]);
+            setUnreadCount(0);
+            return;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
 
         const data = await res.json();
         if (data.success) {
@@ -30,6 +43,8 @@ export default function Notifications() {
         }
       } catch (err) {
         console.error('Error fetching notifications:', err);
+        setNotifications([]);
+        setUnreadCount(0);
       }
     };
 

@@ -9,14 +9,16 @@ let services = [
 ];
 
 export default async function handler(req, res) {
-  // Set CORS headers
+  // Set comprehensive CORS headers FIRST
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Cache-Control', 'no-cache');
 
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   const { path } = req.query;
@@ -77,12 +79,12 @@ export default async function handler(req, res) {
         }
 
         if (method === 'GET') {
-          return res.status(200).json({ request });
+          return res.status(200).json({ success: true, request });
         }
 
         if (method === 'PUT') {
           Object.assign(request, req.body, { updatedAt: new Date().toISOString() });
-          return res.status(200).json({ request });
+          return res.status(200).json({ success: true, request });
         }
 
         if (method === 'DELETE') {
@@ -100,7 +102,7 @@ export default async function handler(req, res) {
           }
 
           const userRequests = serviceRequests.filter(r => r.userId === token.split('-')[2]);
-          return res.status(200).json(userRequests);
+          return res.status(200).json({ success: true, requests: userRequests });
         }
 
         if (method === 'POST') {
@@ -198,6 +200,22 @@ export default async function handler(req, res) {
           Object.assign(user, req.body);
           return res.status(200).json({ user });
         }
+      }
+    }
+
+    // Notifications endpoint (fallback)
+    if (endpoint === 'notifications') {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      if (method === 'GET') {
+        return res.status(200).json({
+          success: true,
+          notifications: [],
+          unreadCount: 0
+        });
       }
     }
 

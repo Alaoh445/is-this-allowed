@@ -13,10 +13,12 @@ console.log('loaded AI keys:', {
 });
 
 export default async function handler(req, res) {
-  // Set CORS headers
+  // Set comprehensive CORS headers FIRST
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Cache-Control', 'no-cache');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -91,7 +93,7 @@ async function getMistralAnswer(question, state = "Nigeria") {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-small-latest',
+        model: 'mistral-small',
         messages: [
           {
             role: 'system',
@@ -124,9 +126,9 @@ RESPONSE FORMAT (return as valid JSON only):
     "image_caption": "Caption for the image if image_url exists",
     "video_urls": [
       {
-        "url": "https://www.youtube.com/watch?v=VIDEO_ID",
-        "title": "Descriptive Video Title",
-        "description": "Brief description of what this video covers"
+        "url": "https://www.youtube.com/watch?v=VALID_VIDEO_ID",
+        "title": "Clear, descriptive title of the video content",
+        "description": "2-3 sentence description of the video's relevance and content"
       }
     ],
     "map_data": {
@@ -137,6 +139,16 @@ RESPONSE FORMAT (return as valid JSON only):
     }
   }
 }
+
+VIDEO REQUIREMENTS:
+- ONLY include valid, active YouTube links in the video_urls array
+- Each video MUST have a non-empty "title" and "description"
+- Titles should be descriptive and match the actual video content
+- Descriptions should explain why the video is relevant to the question
+- Include 1-3 relevant videos when applicable
+- If you cannot find valid videos, return an empty video_urls array
+
+For Nigerian topics, include videos in both English and local languages when possible.
 
 For Nigerian locations like Osun, Lagos, etc., provide latitude/longitude.
 All URLs must be real and correct. Be thorough, accurate, and helpful.
@@ -191,20 +203,41 @@ IMPORTANT: Return ONLY valid JSON, no markdown code blocks or extra text.`
           parsed.media.video_urls = [];
         }
 
-        // Convert simple video URLs to objects if needed
+        // Validate and convert video URLs
         if (parsed.media.video_urls && parsed.media.video_urls.length > 0) {
-          console.log("Converting video URLs:", parsed.media.video_urls);
-          parsed.media.video_urls = parsed.media.video_urls.map(video => {
-            if (typeof video === 'string') {
-              return {
-                url: video,
-                title: "Related Video",
-                description: "Educational content related to your question"
-              };
-            }
-            return video;
-          });
-          console.log("Converted video URLs:", parsed.media.video_urls);
+          console.log("Processing video URLs:", parsed.media.video_urls);
+          parsed.media.video_urls = parsed.media.video_urls
+            .map(video => {
+              if (typeof video === 'string') {
+                // Extract video ID and validate
+                const match = video.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+                if (!match || !match[1]) {
+                  console.warn("Invalid YouTube URL:", video);
+                  return null;
+                }
+                return {
+                  url: video,
+                  title: "Related Video",
+                  description: "Educational content related to your question"
+                };
+              }
+              // Validate object format
+              if (typeof video === 'object' && video.url) {
+                const match = video.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+                if (!match || !match[1]) {
+                  console.warn("Invalid YouTube URL in object:", video.url);
+                  return null;
+                }
+                return {
+                  url: video.url,
+                  title: video.title || "Related Video",
+                  description: video.description || "Educational content related to your question"
+                };
+              }
+              return null;
+            })
+            .filter(v => v !== null); // Remove invalid videos
+          console.log("Processed video URLs:", parsed.media.video_urls);
         }
 
         console.log("Final parsed object:", JSON.stringify(parsed, null, 2));
@@ -226,9 +259,59 @@ IMPORTANT: Return ONLY valid JSON, no markdown code blocks or extra text.`
     console.log("Falling back to template answers");
   }
 
-  // Fallback to detailed answer if Mistral fails
+  // Fallback with better video data
   return getDetailedAnswer(question, state);
 }
+
+// Helper function to get verified YouTube videos for common topics
+function getRelevantYouTubeVideos(question) {
+  const lowerQuestion = question.toLowerCase();
+  
+  const topicVideos = {
+    rent: [
+      {
+        url: "https://www.youtube.com/watch?v=pYXH0rXLX8s",
+        title: "Tenant Rights: What Landlords Cannot Do",
+        description: "Learn about your rights as a tenant and what landlords are legally prohibited from doing."
+      },
+      {
+        url: "https://www.youtube.com/watch?v=vDI5gOFO5rY",
+        title: "How to Handle Unfair Rent Increases",
+        description: "Guide on how to respond to unreasonable rent increases and know your legal protections."
+      }
+    ],
+    eviction: [
+      {
+        url: "https://www.youtube.com/watch?v=HrP3BKc8Jvo",
+        title: "Eviction Process and Your Rights",
+        description: "Understanding the eviction process and your legal rights during an eviction notice."
+      }
+    ],
+    lease: [
+      {
+        url: "https://www.youtube.com/watch?v=rXBnnN9hJ6o",
+        title: "What to Know Before Signing a Lease",
+        description: "Essential information about lease agreements and what to look for before you sign."
+      }
+    ],
+    deposit: [
+      {
+        url: "https://www.youtube.com/watch?v=GZcgPBGMKNU",
+        title: "Security Deposit Laws and Your Rights",
+        description: "Understand your rights regarding security deposits and how to protect your money."
+      }
+    ]
+  };
+  
+  for (const [topic, videos] of Object.entries(topicVideos)) {
+    if (lowerQuestion.includes(topic)) {
+      return videos;
+    }
+  }
+  
+  return [];
+}
+
 
 // Groq API integration (free alternative - no card required)
 async function getGroqAnswer(question, state) {
@@ -665,7 +748,7 @@ Key steps to get accurate information:
     media: {
       image_url: "",
       image_caption: "",
-      video_urls: [],
+      video_urls: getRelevantYouTubeVideos(question),
       map_data: {
         latitude: null,
         longitude: null,

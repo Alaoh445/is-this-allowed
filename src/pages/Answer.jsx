@@ -417,64 +417,110 @@ function Answer() {
               {answer.media.video_urls.map((video, index) => {
                 // Handle both string URLs and video objects
                 const videoUrl = typeof video === 'string' ? video : video.url;
-                const videoTitle = typeof video === 'object' ? video.title : null;
-                const videoDescription = typeof video === 'object' ? video.description : null;
+                const videoTitle = typeof video === 'object' && video.title ? video.title : `Video ${index + 1}`;
+                const videoDescription = typeof video === 'object' && video.description ? video.description : "Educational content related to your question";
+                
+                if (!videoUrl) {
+                  return null; // Skip invalid videos
+                }
                 
                 // Extract YouTube video ID if it's a YouTube URL
                 const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
                 const videoId = youtubeMatch ? youtubeMatch[1] : null;
                 
+                const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+
                 return (
                   <div key={videoUrl ? videoUrl : `video-${index}`} style={{
                     backgroundColor: "white",
                     padding: "15px",
                     borderRadius: "8px",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    display: "flex",
+                    flexDirection: "column"
                   }}>
-                    {videoId ? (
-                      <div>
-                        <iframe
-                          width="100%"
-                          height="200"
-                          src={`https://www.youtube.com/embed/${videoId}`}
-                          title={videoTitle || `Related video ${index + 1}`}
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          style={{ borderRadius: "8px" }}
-                        />
-                        {videoTitle && (
-                          <h4 style={{ margin: "10px 0 5px 0", fontSize: "1rem", color: "#333" }}>
-                            {videoTitle}
-                          </h4>
-                        )}
-                        {videoDescription && (
-                          <p style={{ fontSize: "0.9rem", color: "#666", margin: "0" }}>
-                            {videoDescription}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div>
-                        <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {thumbnailUrl ? (
+                        <div style={{
+                          position: "relative",
+                          paddingBottom: "56.25%",
+                          height: 0,
+                          overflow: "hidden",
+                          borderRadius: "8px",
+                          marginBottom: "12px",
+                          backgroundColor: "#000"
+                        }}>
+                          <img
+                            src={thumbnailUrl}
+                            alt={videoTitle}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover"
+                            }}
+                          />
+                          <div style={{
+                            position: "absolute",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            padding: "10px",
+                            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%)",
+                            color: "white",
+                            fontSize: "0.9rem",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between"
+                          }}>
+                            <span>Preview</span>
+                            <span style={{ background: '#e62117', borderRadius: '4px', padding: '2px 6px', fontSize: '0.8rem' }}>YouTube</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{
+                          backgroundColor: '#f3f4f6',
+                          borderRadius: '8px',
+                          padding: '25px',
+                          marginBottom: '12px'
+                        }}>
+                          <p style={{ margin: 0, color: '#333' }}>Video preview unavailable. Click to open the link.</p>
+                        </div>
+                      )}
+                    </a>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{
+                        color: "#333",
+                        textDecoration: "none",
+                        marginBottom: "8px",
+                        fontWeight: "700",
+                        fontSize: "1rem"
+                      }}>
+                        {videoTitle}
+                      </a>
+                      <p style={{ fontSize: "0.9rem", color: "#666", margin: "0 0 12px 0", flex: 1 }}>
+                        {videoDescription}
+                      </p>
+                      <a 
+                        href={videoUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{
                           color: "#667eea",
                           textDecoration: "none",
-                          wordBreak: "break-all",
-                          display: "block",
-                          marginBottom: "8px"
-                        }}>
-                          📺 {videoTitle || `Watch Video ${index + 1}`}
-                        </a>
-                        {videoDescription && (
-                          <p style={{ fontSize: "0.9rem", color: "#666", margin: "0" }}>
-                            {videoDescription}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                          fontSize: "0.85rem",
+                          fontWeight: "500"
+                        }}
+                      >
+                        Watch on YouTube →
+                      </a>
+                    </div>
                   </div>
                 );
-              })}
+              }).filter(Boolean)}
             </div>
           </div>
         )}
