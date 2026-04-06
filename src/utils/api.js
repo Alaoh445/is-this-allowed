@@ -10,7 +10,7 @@ export const getApiBaseUrl = () => {
 
   // Local development
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:5000';
+    return ''; // Use relative paths, proxied by Vite
   }
 
   // Check if we're on Vercel (vercel.app domain or Vercel preview deployments)
