@@ -1,5 +1,4 @@
 // Serverless function to handle contact form submissions
-/* global exports */
 exports.handler = async (event) => {
   // Handle OPTIONS request for CORS
   if (event.httpMethod === 'OPTIONS') {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { getApiBaseUrl } from '../utils/api.js';
 import './Notifications.css';
 
 export default function Notifications() {
@@ -9,7 +10,7 @@ export default function Notifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const BASE_URL = getApiBaseUrl();
 
   // Fetch notifications every 5 seconds for real-time updates
   useEffect(() => {

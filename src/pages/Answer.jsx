@@ -141,11 +141,7 @@ function Answer() {
         window.scrollTo(0, 0);
         const decodedQuestion = decodeURIComponent(id);
         
-        // Determine the API endpoint based on environment
-        // In development with Vite proxy, use /api/answer
-        // In production on Netlify, use /.netlify/functions/answer
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        const apiUrl = isProduction ? '/.netlify/functions/answer' : '/api/answer';
+        const apiUrl = '/api/answer';
         
         const response = await fetch(apiUrl, {
           method: "POST",
@@ -279,9 +275,9 @@ function Answer() {
 
         {/* Display Featured Image if available */}
         {answer.media?.image_url && (
-          <div style={{ marginBottom: "30px", borderRadius: "8px", overflow: "hidden" }}>
-            <img 
-              src={answer.media.image_url} 
+          <div style={{ marginBottom: "20px", borderRadius: "8px", overflow: "hidden" }}>
+            <img
+              src={answer.media.image_url}
               alt={answer.media.image_caption || "Answer illustration"}
               style={{
                 width: "100%",
@@ -289,10 +285,18 @@ function Answer() {
                 objectFit: "cover",
                 borderRadius: "8px"
               }}
+              className="responsive-image"
               onError={(e) => e.target.style.display = "none"}
             />
             {answer.media.image_caption && (
-              <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "8px", fontStyle: "italic" }}>
+              <p style={{
+                fontSize: "0.9rem",
+                color: "#666",
+                marginTop: "8px",
+                fontStyle: "italic",
+                textAlign: "center"
+              }}
+              className="responsive-caption">
                 {answer.media.image_caption}
               </p>
             )}
@@ -345,15 +349,23 @@ function Answer() {
           padding: "25px",
           borderLeft: "5px solid #667eea",
           borderRadius: "4px",
-          marginBottom: "30px"
-        }}>
-          <h3 style={{ marginTop: "0", color: "#333" }}>📋 Detailed Explanation:</h3>
-          <p style={{ 
-            lineHeight: "1.8", 
+          marginBottom: "20px"
+        }}
+        className="responsive-section">
+          <h3 style={{
+            marginTop: "0",
+            color: "#333",
+            fontSize: "1.2rem"
+          }}
+          className="responsive-heading">📋 Detailed Explanation:</h3>
+          <p style={{
+            lineHeight: "1.6",
             fontSize: "1.05rem",
             color: "#555",
-            whiteSpace: "pre-line"
-          }}>
+            whiteSpace: "pre-line",
+            marginBottom: "0"
+          }}
+          className="responsive-text">
             {answer.explanation}
           </p>
         </div>
@@ -363,14 +375,22 @@ function Answer() {
             backgroundColor: "#f0f7ff",
             padding: "25px",
             borderRadius: "8px",
-            marginBottom: "30px"
-          }}>
-            <h3 style={{ marginTop: "0", color: "#333" }}>✅ Recommended Actions:</h3>
-            <ul style={{ 
-              lineHeight: "2.2",
+            marginBottom: "20px"
+          }}
+          className="responsive-section">
+            <h3 style={{
+              marginTop: "0",
+              color: "#333",
+              fontSize: "1.2rem"
+            }}
+            className="responsive-heading">✅ Recommended Actions:</h3>
+            <ul style={{
+              lineHeight: "1.8",
               fontSize: "1rem",
-              color: "#555"
-            }}>
+              color: "#555",
+              paddingLeft: "25px"
+            }}
+            className="responsive-list">
               {answer.actions.map((action, index) => (
                 <li key={`action-${index}`} style={{ marginBottom: "8px" }}>
                   <strong>Step {index + 1}:</strong> {action}
@@ -394,32 +414,63 @@ function Answer() {
               gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
               gap: "20px"
             }}>
-              {answer.media.video_urls.map((url, index) => {
+              {answer.media.video_urls.map((video, index) => {
+                // Handle both string URLs and video objects
+                const videoUrl = typeof video === 'string' ? video : video.url;
+                const videoTitle = typeof video === 'object' ? video.title : null;
+                const videoDescription = typeof video === 'object' ? video.description : null;
+                
                 // Extract YouTube video ID if it's a YouTube URL
-                const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+                const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
                 const videoId = youtubeMatch ? youtubeMatch[1] : null;
                 
                 return (
-                  <div key={url ? url : `video-${index}`}>
+                  <div key={videoUrl ? videoUrl : `video-${index}`} style={{
+                    backgroundColor: "white",
+                    padding: "15px",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  }}>
                     {videoId ? (
-                      <iframe
-                        width="100%"
-                        height="200"
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        title={`Related video ${index + 1}`}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={{ borderRadius: "8px" }}
-                      />
+                      <div>
+                        <iframe
+                          width="100%"
+                          height="200"
+                          src={`https://www.youtube.com/embed/${videoId}`}
+                          title={videoTitle || `Related video ${index + 1}`}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          style={{ borderRadius: "8px" }}
+                        />
+                        {videoTitle && (
+                          <h4 style={{ margin: "10px 0 5px 0", fontSize: "1rem", color: "#333" }}>
+                            {videoTitle}
+                          </h4>
+                        )}
+                        {videoDescription && (
+                          <p style={{ fontSize: "0.9rem", color: "#666", margin: "0" }}>
+                            {videoDescription}
+                          </p>
+                        )}
+                      </div>
                     ) : (
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={{
-                        color: "#667eea",
-                        textDecoration: "none",
-                        wordBreak: "break-all"
-                      }}>
-                        📺 Watch Video {index + 1}
-                      </a>
+                      <div>
+                        <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{
+                          color: "#667eea",
+                          textDecoration: "none",
+                          wordBreak: "break-all",
+                          display: "block",
+                          marginBottom: "8px"
+                        }}>
+                          📺 {videoTitle || `Watch Video ${index + 1}`}
+                        </a>
+                        {videoDescription && (
+                          <p style={{ fontSize: "0.9rem", color: "#666", margin: "0" }}>
+                            {videoDescription}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

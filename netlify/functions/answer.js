@@ -1,10 +1,10 @@
 // API Keys from environment or hardcoded fallback
 // Try multiple sources: process.env (Netlify), netlify.toml, .env.production
-/* global process, exports */
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB';
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL || '';
+const env = process.env;
+const MISTRAL_API_KEY = env.MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB';
+const GROQ_API_KEY = env.GROQ_API_KEY || '';
+const OPENAI_API_KEY = env.OPENAI_API_KEY || '';
+const BACKEND_URL = env.REACT_APP_BACKEND_URL || env.BACKEND_URL || '';
 
 // Log environment status at startup (helps with debugging)
 console.log('[Startup] Netlify Serverless Function initialized');
@@ -111,7 +111,7 @@ async function generateComprehensiveAnswer(question, state = 'Nigeria') {
     }
     // Try calling backend server if available
     else {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      const backendUrl = env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
       console.log(`[generateComprehensiveAnswer] Attempting to call backend server at ${backendUrl}`);
       try {
         const answer = await callBackendServer(backendUrl, question, state);

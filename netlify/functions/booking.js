@@ -1,5 +1,4 @@
 // Serverless function to handle booking requests
-/* global exports */
 exports.handler = async (event) => {
   // Handle OPTIONS request for CORS
   if (event.httpMethod === 'OPTIONS') {

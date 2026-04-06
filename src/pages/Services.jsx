@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { getApiBaseUrl } from '../utils/api.js';
 import './Services.css';
 
 const PROFESSIONAL_CATEGORIES = [
@@ -31,7 +32,7 @@ export default function Services() {
   const [sortBy, setSortBy] = useState('name');
 
   // use relative path so serverless functions work both locally and when deployed
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const BASE_URL = getApiBaseUrl();
 
   const fetchServices = useCallback(async () => {
     setLoading(true);

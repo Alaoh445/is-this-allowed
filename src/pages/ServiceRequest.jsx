@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getApiBaseUrl } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header.jsx';
 import './ServiceRequest.css';
@@ -13,7 +14,7 @@ export default function ServiceRequest() {
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const BASE_URL = getApiBaseUrl();
 
   const fetchRequest = useCallback(async () => {
     if (!token || !requestId) return;

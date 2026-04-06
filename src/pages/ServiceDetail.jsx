@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl } from '../utils/api.js';
 import './ServiceDetail.css';
 
 const PROFESSIONAL_CATEGORIES = [
@@ -41,7 +42,7 @@ export default function ServiceDetail() {
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const BASE_URL = getApiBaseUrl();
 
   const fetchService = useCallback(async () => {
     setLoading(true);

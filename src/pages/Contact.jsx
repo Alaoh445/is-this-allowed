@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getApiBaseUrl } from '../utils/api.js';
 import Header from "../components/Header.jsx";
 import Footer from "../components/Footer.jsx";
 
@@ -29,9 +30,8 @@ function Contact() {
     setError(null);
     
     try {
-      // Determine the API endpoint based on environment
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      const apiUrl = isProduction ? '/.netlify/functions/contact' : 'http://localhost:5000/api/contact';
+      const baseUrl = getApiBaseUrl();
+      const apiUrl = `${baseUrl}/api/contact`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',

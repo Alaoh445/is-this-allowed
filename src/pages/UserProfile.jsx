@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl } from '../utils/api.js';
 import './UserProfile.css';
 
 export default function UserProfile() {
@@ -33,7 +34,8 @@ export default function UserProfile() {
         }
         const headers = {};
         if (token) headers.Authorization = `Bearer ${token}`;
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/users/${id}`, {
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/api/users/${id}`, {
           headers
         });
         const data = await res.json();
@@ -48,7 +50,8 @@ export default function UserProfile() {
           // if provider, fetch their services
           if (data.user.type === 'provider') {
             try {
-              const svcRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/provider/${id}/services`);
+              const baseUrl = getApiBaseUrl();
+              const svcRes = await fetch(`${baseUrl}/api/provider/${id}/services`);
               const svcData = await svcRes.json();
               if (svcRes.ok && svcData.success) {
                 setProviderServices(svcData.services || []);
@@ -62,7 +65,8 @@ export default function UserProfile() {
           if (isSelf && data.user.type === 'client') {
             try {
               setRequestsLoading(true);
-              const reqRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/service-requests`, {
+              const baseUrl = getApiBaseUrl();
+              const reqRes = await fetch(`${baseUrl}/api/service-requests`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : {}
               });
               const reqData = await reqRes.json();
@@ -106,7 +110,8 @@ export default function UserProfile() {
     setSaving(true);
     try {
       const id = profileUser.id;
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/users/${id}`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/users/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

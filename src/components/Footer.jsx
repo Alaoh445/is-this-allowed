@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiBaseUrl } from '../utils/api.js';
 
 function Footer() {
   const currentYear = new Date().getFullYear();
@@ -15,8 +16,8 @@ function Footer() {
     
     try {
       // Determine the API endpoint based on environment
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      const apiUrl = isProduction ? '/.netlify/functions/newsletter' : 'http://localhost:5000/api/newsletter';
+      const baseUrl = getApiBaseUrl();
+      const apiUrl = `${baseUrl}/api/newsletter`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',

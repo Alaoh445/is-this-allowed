@@ -626,6 +626,35 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
+// Get all predefined services (for dashboard and listings)
+app.get('/api/predefined-services', (req, res) => {
+  try {
+    const allServices = [];
+    
+    // Flatten the PREDEFINED_SERVICES object into an array
+    Object.entries(PREDEFINED_SERVICES).forEach(([category, services]) => {
+      services.forEach(service => {
+        allServices.push({
+          id: `${category}-${service.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+          name: service.name,
+          category,
+          description: service.description,
+          price: Math.floor(Math.random() * 100000) + 25000, // Random price for demo
+          duration: '1 hour' // Default duration
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      services: allServices,
+      total: allServices.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get predefined services for a category (for service provider form)
 app.get('/api/predefined-services/:category', (req, res) => {
   try {

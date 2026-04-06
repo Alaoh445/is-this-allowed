@@ -4,3 +4,57 @@
   padding: 2rem;
   text-align: center;
 }
+
+/* Responsive styles for Answer page */
+.responsive-image {
+  max-height: 400px;
+}
+
+.responsive-caption {
+  font-size: 0.9rem;
+}
+
+.responsive-section {
+  padding: 25px;
+}
+
+.responsive-heading {
+  font-size: 1.2rem;
+}
+
+.responsive-text {
+  font-size: 1.05rem;
+}
+
+.responsive-list {
+  font-size: 1rem;
+  padding-left: 25px;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .responsive-image {
+    max-height: 250px;
+  }
+
+  .responsive-caption {
+    font-size: 0.85rem;
+  }
+
+  .responsive-section {
+    padding: 15px;
+  }
+
+  .responsive-heading {
+    font-size: 1.1rem;
+  }
+
+  .responsive-text {
+    font-size: 1rem;
+  }
+
+  .responsive-list {
+    font-size: 0.95rem;
+    padding-left: 20px;
+  }
+}
