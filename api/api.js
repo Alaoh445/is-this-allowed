@@ -4,8 +4,16 @@ let serviceRequests = [];
 let contacts = [];
 let subscribers = [];
 let services = [
-  { id: '1', name: 'Legal Consultation', price: 100, description: 'Basic legal advice', providerId: 'demo' },
-  { id: '2', name: 'Document Review', price: 50, description: 'Review legal documents', providerId: 'demo' }
+  { id: '1', name: 'Legal Consultation', price: 100, description: 'Basic legal advice and consultation', providerId: 'demo', category: 'legal', rating: 4.8, reviews: 45 },
+  { id: '2', name: 'Document Review', price: 50, description: 'Review and analyze legal documents', providerId: 'demo', category: 'legal', rating: 4.9, reviews: 32 },
+  { id: '3', name: 'Medical Consultation', price: 150, description: 'General medical consultation and advice', providerId: 'demo', category: 'health', rating: 4.7, reviews: 28 },
+  { id: '4', name: 'Business Consulting', price: 200, description: 'Business strategy and consulting services', providerId: 'demo', category: 'business', rating: 4.6, reviews: 67 },
+  { id: '5', name: 'Web Development', price: 300, description: 'Custom website development and design', providerId: 'demo', category: 'tech', rating: 4.9, reviews: 89 },
+  { id: '6', name: 'Property Management', price: 120, description: 'Real estate property management services', providerId: 'demo', category: 'real-estate', rating: 4.5, reviews: 23 },
+  { id: '7', name: 'Financial Planning', price: 180, description: 'Personal and business financial planning', providerId: 'demo', category: 'finance', rating: 4.8, reviews: 41 },
+  { id: '8', name: 'Tutoring Services', price: 80, description: 'Academic tutoring and educational support', providerId: 'demo', category: 'education', rating: 4.7, reviews: 156 },
+  { id: '9', name: 'Construction Services', price: 250, description: 'Building and construction contracting', providerId: 'demo', category: 'construction', rating: 4.4, reviews: 34 },
+  { id: '10', name: 'Automotive Repair', price: 90, description: 'Car maintenance and repair services', providerId: 'demo', category: 'automotive', rating: 4.6, reviews: 78 }
 ];
 
 export default async function handler(req, res) {
@@ -166,7 +174,14 @@ export default async function handler(req, res) {
     // Services endpoint
     if (endpoint === 'services') {
       if (method === 'GET') {
-        return res.status(200).json(services);
+        let filteredServices = services;
+        const category = req.query.category;
+        
+        if (category && category !== 'all') {
+          filteredServices = services.filter(s => s.category === category);
+        }
+        
+        return res.status(200).json(filteredServices);
       }
 
       if (method === 'POST') {

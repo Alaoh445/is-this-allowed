@@ -3,7 +3,14 @@
   "outputDirectory": "dist",
   "env": {
     "MISTRAL_API_KEY": "@mistral_api_key",
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VERCEL_ENV": "production"
+  },
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
   },
   "rewrites": [
     {
@@ -18,11 +25,5 @@
       "source": "/((?!api|_next|public).*)",
       "destination": "/index.html"
     }
-  ],
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  }
+  ]
 }

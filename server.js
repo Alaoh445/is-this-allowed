@@ -538,6 +538,47 @@ function seedDefaultServices() {
 
 // ============ API ENDPOINTS ============
 
+// ---- VERCEL COMPATIBILITY ENDPOINT ----
+
+// Universal API endpoint for Vercel compatibility
+app.all('/api/api', async (req, res) => {
+  const { path } = req.query;
+  const method = req.method;
+
+  // Parse path for dynamic routes
+  const pathParts = path ? path.split('/') : [];
+  const endpoint = pathParts[0];
+  const subPath = pathParts[1];
+
+  try {
+    // Services endpoint
+    if (endpoint === 'services') {
+      if (method === 'GET') {
+        let services = getAllServices();
+        const { category } = req.query;
+
+        if (category) {
+          services = services.filter(s => s.category === category);
+        }
+
+        return res.status(200).json(services);
+      }
+
+      if (method === 'POST') {
+        const service = req.body;
+        const newService = saveService(service);
+        return res.status(201).json(newService);
+      }
+    }
+
+    // Default response for unsupported endpoints
+    return res.status(404).json({ error: 'Endpoint not found' });
+  } catch (error) {
+    console.error('API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ---- AUTHENTICATION ENDPOINTS ----
 
 // User Registration

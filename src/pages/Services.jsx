@@ -38,9 +38,9 @@ export default function Services() {
     setLoading(true);
     setError('');
     try {
-      let url = `${BASE_URL}/api/services`;
+      let url = `${BASE_URL}/api/api?path=services`;
       if (selectedCategory && selectedCategory !== 'all') {
-        url += `?category=${selectedCategory}`;
+        url += `&category=${selectedCategory}`;
       }
 
       const res = await fetch(url);
