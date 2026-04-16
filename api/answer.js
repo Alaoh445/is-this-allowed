@@ -1,15 +1,16 @@
 import fetch from 'node-fetch';
 
 const env = process.env;
-const MISTRAL_API_KEY = env.MISTRAL_API_KEY || env.VITE_MISTRAL_API_KEY || '';
+const MISTRAL_API_KEY = env.MISTRAL_API_KEY || env.VITE_MISTRAL_API_KEY || 'V2RyZVaQfIZtScgZXizx8VtjUj34wDlB';
 const GROQ_API_KEY = env.GROQ_API_KEY || env.VITE_GROQ_API_KEY || '';
 const OPENAI_API_KEY = env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY || '';
 
-console.log('loaded AI keys:', {
-  mistral: !!MISTRAL_API_KEY,
+console.log('Vercel AI Configuration:', {
+  mistral: MISTRAL_API_KEY ? MISTRAL_API_KEY.substring(0, 8) + '...' : 'NOT SET',
   groq: !!GROQ_API_KEY,
   openai: !!OPENAI_API_KEY,
-  hasProcess: typeof process !== 'undefined'
+  node_env: env.NODE_ENV,
+  vercel_env: env.VERCEL_ENV || 'not detected'
 });
 
 export default async function handler(req, res) {

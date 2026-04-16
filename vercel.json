@@ -1,4 +1,10 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "env": {
+    "MISTRAL_API_KEY": "@mistral_api_key",
+    "NODE_ENV": "production"
+  },
   "rewrites": [
     {
       "source": "/api/answer",
@@ -9,8 +15,14 @@
       "destination": "/api/api?path=:path*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api|_next|public).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  }
 }

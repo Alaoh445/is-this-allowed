@@ -2,31 +2,25 @@ export const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL || '';
   const normalizedEnvUrl = envUrl.replace(/\/+$/, '');
 
+  const hostname = window.location.hostname;
+  const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel-preview');
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === window.location.hostname;
+  const isDev = !import.meta.env.PROD;
+
+  // For Vercel deployments, always use relative paths (serverless functions at /api)
+  if (isVercel || (import.meta.env.PROD && !isDev)) {
+    return '';
+  }
+
+  // For local development (desktop and mobile via IP), use relative paths (Vite proxy)
+  if (isDev) {
+    return '';
+  }
+
+  // Fallback: use env variable if set, otherwise relative paths
   if (normalizedEnvUrl) {
     return normalizedEnvUrl;
   }
 
-  const hostname = window.location.hostname;
-
-  // Local development
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return ''; // Use relative paths, proxied by Vite
-  }
-
-  // Check if we're on Vercel (vercel.app domain or Vercel preview deployments)
-  if (hostname.includes('vercel.app') ||
-      hostname.includes('vercel-preview') ||
-      window.location.origin.includes('vercel')) {
-    return ''; // Use relative paths for Vercel serverless functions
-  }
-
-  // Check for custom Vercel deployments (common patterns)
-  if (import.meta.env.PROD &&
-      (hostname.includes('.vercel.app') ||
-       window.location.origin.includes('vercel'))) {
-    return '';
-  }
-
-  // Fallback for other environments
-  return 'https://is-this-allowed.onrender.com';
+  return '';
 };

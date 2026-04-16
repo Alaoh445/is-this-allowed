@@ -124,6 +124,35 @@ const getSuggestedServices = (question) => {
   return suggestions.slice(0, 3); // Limit to 3 suggestions
 };
 
+const YOUTUBE_URL_REGEX = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([^&\n?#]+)/i;
+
+const getYouTubeVideoId = (url) => {
+  if (!url || typeof url !== 'string') {
+    return null;
+  }
+  const match = url.match(YOUTUBE_URL_REGEX);
+  return match ? match[1] : null;
+};
+
+const normalizeVideo = (video, index) => {
+  if (!video) return null;
+
+  const rawUrl = typeof video === 'string' ? video : video.url;
+  const title = typeof video === 'object' && video.title ? video.title : `Recommended Video ${index + 1}`;
+  const description = typeof video === 'object' && video.description ? video.description : 'Helpful video related to your question.';
+  const videoId = getYouTubeVideoId(rawUrl);
+
+  if (!videoId) return null;
+
+  return {
+    id: videoId,
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    title,
+    description,
+    thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+  };
+};
+
 function Answer() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -133,6 +162,51 @@ function Answer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [suggestedServices, setSuggestedServices] = useState([]);
+  const [previewVideoId, setPreviewVideoId] = useState(null);
+  const [previewCountdown, setPreviewCountdown] = useState(0);
+
+  const fallbackVideos = [
+    {
+      id: 'pYXH0rXLX8s',
+      url: 'https://www.youtube.com/watch?v=pYXH0rXLX8s',
+      title: 'Tenant Rights: What Landlords Cannot Do',
+      description: 'Learn about your rights as a tenant and what landlords are legally prohibited from doing.',
+      thumbnail: 'https://img.youtube.com/vi/pYXH0rXLX8s/hqdefault.jpg'
+    },
+    {
+      id: 'rXBnnN9hJ6o',
+      url: 'https://www.youtube.com/watch?v=rXBnnN9hJ6o',
+      title: 'What to Know Before Signing a Lease',
+      description: 'Essential information about lease agreements and common terms before you sign any contract.',
+      thumbnail: 'https://img.youtube.com/vi/rXBnnN9hJ6o/hqdefault.jpg'
+    }
+  ];
+
+  const startVideoPreview = (videoId) => {
+    setPreviewVideoId(videoId);
+    setPreviewCountdown(5);
+  };
+
+  const validVideoCards = (answer?.media?.video_urls || []).map(normalizeVideo).filter(Boolean);
+  const videosToShow = validVideoCards.length > 0 ? validVideoCards : fallbackVideos;
+  const hasAnswerVideos = validVideoCards.length > 0;
+
+  useEffect(() => {
+    if (!previewVideoId) return;
+
+    const timer = setInterval(() => {
+      setPreviewCountdown((current) => {
+        if (current <= 1) {
+          clearInterval(timer);
+          setPreviewVideoId(null);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [previewVideoId]);
 
   useEffect(() => {
     const fetchAnswer = async () => {
@@ -401,126 +475,157 @@ function Answer() {
         )}
 
         {/* Display Videos if available */}
-        {answer.media?.video_urls && answer.media.video_urls.length > 0 && (
+        {videosToShow.length > 0 && (
           <div style={{
             backgroundColor: "#f0f7ff",
             padding: "25px",
             borderRadius: "8px",
             marginBottom: "30px"
           }}>
-            <h3 style={{ marginTop: "0", color: "#333" }}>🎥 Related Videos:</h3>
+            <h3 style={{ marginTop: "0", color: "#333" }}>
+              🎥 {hasAnswerVideos ? 'Related Videos' : 'Suggested YouTube Resources'}
+            </h3>
+            {!hasAnswerVideos && (
+              <p style={{ color: '#555', marginBottom: '18px' }}>
+                We could not find a valid video from the answer payload, so these verified YouTube resources are suggested instead.
+              </p>
+            )}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px"
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "18px"
             }}>
-              {answer.media.video_urls.map((video, index) => {
-                // Handle both string URLs and video objects
-                const videoUrl = typeof video === 'string' ? video : video.url;
-                const videoTitle = typeof video === 'object' && video.title ? video.title : `Video ${index + 1}`;
-                const videoDescription = typeof video === 'object' && video.description ? video.description : "Educational content related to your question";
-                
-                if (!videoUrl) {
-                  return null; // Skip invalid videos
-                }
-                
-                // Extract YouTube video ID if it's a YouTube URL
-                const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
-                const videoId = youtubeMatch ? youtubeMatch[1] : null;
-                
-                const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
-
-                return (
-                  <div key={videoUrl ? videoUrl : `video-${index}`} style={{
-                    backgroundColor: "white",
-                    padding: "15px",
-                    borderRadius: "8px",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    display: "flex",
-                    flexDirection: "column"
-                  }}>
-                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                      {thumbnailUrl ? (
-                        <div style={{
-                          position: "relative",
-                          paddingBottom: "56.25%",
-                          height: 0,
-                          overflow: "hidden",
-                          borderRadius: "8px",
-                          marginBottom: "12px",
-                          backgroundColor: "#000"
-                        }}>
-                          <img
-                            src={thumbnailUrl}
-                            alt={videoTitle}
-                            style={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover"
-                            }}
-                          />
-                          <div style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            padding: "10px",
-                            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%)",
-                            color: "white",
-                            fontSize: "0.9rem",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between"
-                          }}>
-                            <span>Preview</span>
-                            <span style={{ background: '#e62117', borderRadius: '4px', padding: '2px 6px', fontSize: '0.8rem' }}>YouTube</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{
-                          backgroundColor: '#f3f4f6',
-                          borderRadius: '8px',
-                          padding: '25px',
-                          marginBottom: '12px'
-                        }}>
-                          <p style={{ margin: 0, color: '#333' }}>Video preview unavailable. Click to open the link.</p>
-                        </div>
-                      )}
-                    </a>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{
-                        color: "#333",
-                        textDecoration: "none",
-                        marginBottom: "8px",
-                        fontWeight: "700",
-                        fontSize: "1rem"
+              {videosToShow.map((video) => (
+                <div key={video.id} style={{
+                  backgroundColor: "white",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
+                  transition: "transform 0.18s ease",
+                  display: "flex",
+                  flexDirection: "column"
+                }}>
+                  <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", backgroundColor: "#000" }}>
+                    {previewVideoId === video.id ? (
+                      <iframe
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          border: "0"
+                        }}
+                        src={`https://www.youtube.com/embed/${video.id}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&fs=1`}
+                        title={video.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover"
+                        }}
+                      />
+                    )}
+                    {previewVideoId !== video.id && (
+                      <button
+                        type="button"
+                        onClick={() => startVideoPreview(video.id)}
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "64px",
+                          height: "64px",
+                          backgroundColor: "rgba(0,0,0,0.65)",
+                          color: "white",
+                          cursor: "pointer",
+                          boxShadow: "0 12px 24px rgba(0,0,0,0.24)",
+                          fontSize: "1.7rem"
+                        }}
+                      >
+                        ▶
+                      </button>
+                    )}
+                    {previewVideoId === video.id && (
+                      <div style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: "10px 12px",
+                        background: "rgba(0,0,0,0.72)",
+                        color: "#fff",
+                        fontSize: "0.95rem"
                       }}>
-                        {videoTitle}
+                        Preview ends in {previewCountdown} second{previewCountdown === 1 ? '' : 's'}...
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div>
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#111827",
+                          textDecoration: "none",
+                          fontSize: "1rem",
+                          fontWeight: "700"
+                        }}
+                      >
+                        {video.title}
                       </a>
-                      <p style={{ fontSize: "0.9rem", color: "#666", margin: "0 0 12px 0", flex: 1 }}>
-                        {videoDescription}
-                      </p>
-                      <a 
-                        href={videoUrl} 
-                        target="_blank" 
+                    </div>
+                    <p style={{ margin: 0, color: "#4b5563", fontSize: "0.95rem", lineHeight: "1.5" }}>
+                      {video.description}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => startVideoPreview(video.id)}
+                        style={{
+                          padding: "10px 16px",
+                          backgroundColor: "#667eea",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "999px",
+                          cursor: "pointer",
+                          fontWeight: "600"
+                        }}
+                      >
+                        Preview 5s
+                      </button>
+                      <a
+                        href={video.url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         style={{
                           color: "#667eea",
                           textDecoration: "none",
-                          fontSize: "0.85rem",
-                          fontWeight: "500"
+                          fontSize: "0.9rem",
+                          fontWeight: "600"
                         }}
                       >
-                        Watch on YouTube →
+                        Open on YouTube →
                       </a>
                     </div>
                   </div>
-                );
-              }).filter(Boolean)}
+                </div>
+              ))}
             </div>
           </div>
         )}
