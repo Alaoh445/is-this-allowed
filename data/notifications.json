@@ -157,7 +157,7 @@
     "type": "success",
     "relatedId": "5df20781d0194b04",
     "url": "/profile/77fdbef802ff8064",
-    "read": false,
+    "read": true,
     "createdAt": "2026-03-16T12:00:14.011Z"
   },
   {
@@ -357,5 +357,93 @@
     "url": "/service-request/779df52c7396509d",
     "read": true,
     "createdAt": "2026-03-19T00:19:13.189Z"
+  },
+  {
+    "id": "5211fa109233d2d5",
+    "userId": "db13b010965b57ae",
+    "title": "New Review for corporate legal law",
+    "message": "John doe gave a 5-star review: \"Great services\"",
+    "type": "success",
+    "relatedId": "da10396611ed2277",
+    "url": null,
+    "read": false,
+    "createdAt": "2026-04-30T12:30:05.092Z"
+  },
+  {
+    "id": "3c1398d0b75c2253",
+    "userId": "db13b010965b57ae",
+    "title": "New Service Request: corporate legal law",
+    "message": "John doe has requested your service \"corporate legal law\"",
+    "type": "info",
+    "relatedId": "b0a353acb559ec38",
+    "url": "/service-request/b0a353acb559ec38",
+    "read": false,
+    "createdAt": "2026-04-30T12:30:36.831Z"
+  },
+  {
+    "id": "55c025dce1cd4304",
+    "userId": "77fdbef802ff8064",
+    "title": "New Review for Web Development",
+    "message": "John doe gave a 5-star review: \"Great services\"",
+    "type": "success",
+    "relatedId": "9264b95e6ccadf77",
+    "url": null,
+    "read": true,
+    "createdAt": "2026-04-30T12:32:53.089Z"
+  },
+  {
+    "id": "be236c7526bb66c8",
+    "userId": "77fdbef802ff8064",
+    "title": "New Service Request: Web Development",
+    "message": "John doe has requested your service \"Web Development\"",
+    "type": "info",
+    "relatedId": "107c2c10a268fcf3",
+    "url": "/service-request/107c2c10a268fcf3",
+    "read": true,
+    "createdAt": "2026-04-30T12:33:12.434Z"
+  },
+  {
+    "id": "5757c5c7208374a8",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Web Development\" has been accepted\nProvider: \"okay we will see to it\"",
+    "type": "success",
+    "relatedId": "107c2c10a268fcf3",
+    "url": "/service-request/107c2c10a268fcf3",
+    "read": true,
+    "createdAt": "2026-04-30T12:33:50.287Z"
+  },
+  {
+    "id": "aecc1ab14a35d262",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Web Development\" has been in_progress\nProvider: \"okay we will see to it\"",
+    "type": "info",
+    "relatedId": "107c2c10a268fcf3",
+    "url": "/service-request/107c2c10a268fcf3",
+    "read": true,
+    "createdAt": "2026-04-30T12:34:18.375Z"
+  },
+  {
+    "id": "5a552524584f4ab6",
+    "userId": "14ae84acd599c327",
+    "title": "Service Request Update",
+    "message": "Your request for \"Web Development\" has been completed\nProvider: \"okay we will see to it\"",
+    "type": "info",
+    "relatedId": "107c2c10a268fcf3",
+    "url": "/service-request/107c2c10a268fcf3",
+    "read": true,
+    "createdAt": "2026-04-30T12:34:31.330Z"
+  },
+  {
+    "id": "4802660b79cfe2d8",
+    "userId": "77fdbef802ff8064",
+    "title": "Service Request Update",
+    "message": "Payment received for your service \"Web Development\"",
+    "type": "success",
+    "relatedId": "107c2c10a268fcf3",
+    "url": "/service-request/107c2c10a268fcf3",
+    "read": true,
+    "createdAt": "2026-04-30T12:34:54.635Z"
   }
 ]

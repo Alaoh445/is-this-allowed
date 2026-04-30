@@ -644,8 +644,17 @@
   {
     "id": "da10396611ed2277",
     "createdAt": "2026-03-09T14:22:25.740Z",
-    "rating": 0,
-    "reviews": [],
+    "rating": 5,
+    "reviews": [
+      {
+        "id": "1777552205083",
+        "clientId": "14ae84acd599c327",
+        "clientName": "John doe",
+        "rating": 5,
+        "comment": "Great services",
+        "createdAt": "2026-04-30T12:30:05.083Z"
+      }
+    ],
     "providerId": "db13b010965b57ae",
     "name": "corporate legal law",
     "category": "legal",
@@ -692,8 +701,17 @@
   {
     "id": "9264b95e6ccadf77",
     "createdAt": "2026-03-16T11:41:59.857Z",
-    "rating": 0,
-    "reviews": [],
+    "rating": 5,
+    "reviews": [
+      {
+        "id": "1777552373083",
+        "clientId": "14ae84acd599c327",
+        "clientName": "John doe",
+        "rating": 5,
+        "comment": "Great services",
+        "createdAt": "2026-04-30T12:32:53.083Z"
+      }
+    ],
     "providerId": "77fdbef802ff8064",
     "name": "Web Development",
     "category": "tech",
