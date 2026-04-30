@@ -2118,7 +2118,61 @@ All URLs must be real and correct. Be thorough, accurate, and helpful.`
       // Remove markdown code blocks if present
       content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
-      const parsed = JSON.parse(content);      
+      // Fix unterminated strings before parsing
+      try {
+        // Try direct parse first
+        var parsed = JSON.parse(content);
+      } catch (parseError) {
+        console.log("JSON parse error, attempting to fix unterminated strings");
+        // Try to fix common JSON issues
+        let fixedContent = content;
+        const lines = fixedContent.split('\n');
+        let inString = false;
+        let stringChar = '';
+        let result = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          let newLine = '';
+          let j = 0;
+          
+          while (j < line.length) {
+            const char = line[j];
+            
+            if (!inString) {
+              if (char === '"') {
+                inString = true;
+                stringChar = '"';
+                newLine += char;
+              } else {
+                newLine += char;
+              }
+            } else {
+              if (j > 0 && line[j - 1] !== '\\' && char === stringChar) {
+                inString = false;
+                newLine += char;
+              } else if (char === '\n' || char === '\r') {
+                // Unterminated string - close it
+                inString = false;
+                newLine += '"';
+              } else {
+                newLine += char;
+              }
+            }
+            j++;
+          }
+          
+          // Close any unclosed strings at end of line
+          if (inString) {
+            newLine += '"';
+          }
+          result.push(newLine);
+        }
+        
+        fixedContent = result.join('\n');
+        parsed = JSON.parse(fixedContent);
+        console.log("Successfully fixed JSON and parsed");
+      }      
       // Ensure media object exists with defaults
       if (!parsed.media) {
         parsed.media = {

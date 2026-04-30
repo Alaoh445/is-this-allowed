@@ -183,7 +183,58 @@ IMPORTANT: Return ONLY valid JSON, no markdown code blocks or extra text.`
       console.log("Raw AI response content:", content);
 
       try {
-        const parsed = JSON.parse(content);
+        // Try to fix common JSON issues before parsing
+        let fixedContent = content;
+        
+        // Fix unterminated strings by finding and replacing problematic sections
+        // This handles cases where the AI returns incomplete strings
+        const lines = fixedContent.split('\n');
+        let inString = false;
+        let stringChar = '';
+        let result = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          let newLine = '';
+          let j = 0;
+          
+          while (j < line.length) {
+            const char = line[j];
+            
+            if (!inString) {
+              if (char === '"') {
+                inString = true;
+                stringChar = '"';
+                newLine += char;
+              } else {
+                newLine += char;
+              }
+            } else {
+              if (line[j - 1] !== '\\' && char === stringChar) {
+                inString = false;
+                newLine += char;
+              } else if (char === '\n' || char === '\r') {
+                // Unterminated string - close it
+                inString = false;
+                newLine += '"';
+              } else {
+                newLine += char;
+              }
+            }
+            j++;
+          }
+          
+          // Close any unclosed strings at end of line
+          if (inString) {
+            newLine += '"';
+          }
+          result.push(newLine);
+        }
+        
+        fixedContent = result.join('\n');
+        console.log("Fixed JSON content for parsing");
+        
+        const parsed = JSON.parse(fixedContent);
         // Ensure media object exists with proper defaults
         if (!parsed.media) {
           parsed.media = {
