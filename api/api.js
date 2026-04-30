@@ -181,7 +181,8 @@ export default async function handler(req, res) {
           filteredServices = services.filter(s => s.category === category);
         }
         
-        return res.status(200).json(filteredServices);
+        // Return in format expected by frontend
+        return res.status(200).json({ success: true, services: filteredServices });
       }
 
       if (method === 'POST') {
@@ -192,7 +193,7 @@ export default async function handler(req, res) {
         };
         services.push(service);
 
-        return res.status(201).json(service);
+        return res.status(201).json({ success: true, services: [service] });
       }
     }
 

@@ -561,13 +561,14 @@ app.all('/api/api', async (req, res) => {
           services = services.filter(s => s.category === category);
         }
 
-        return res.status(200).json(services);
+        // Return in format expected by frontend
+        return res.status(200).json({ success: true, services });
       }
 
       if (method === 'POST') {
         const service = req.body;
         const newService = saveService(service);
-        return res.status(201).json(newService);
+        return res.status(201).json({ success: true, services: [newService] });
       }
     }
 
